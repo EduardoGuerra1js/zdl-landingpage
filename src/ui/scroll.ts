@@ -2,10 +2,11 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
+import { layoutState, type Rect } from "../scene/LayoutState";
 import { SECTION_IDS, scrollState } from "../scene/ScrollState";
 
 /**
- * Contrato: único escritor de `scrollState`.
+ * Contrato: único escritor de `scrollState` y `layoutState`.
  * Lenis suaviza el scroll nativo (no transforma el DOM), así que ScrollTrigger mide posiciones
  * reales. Lenis avanza en el ticker de GSAP: un solo requestAnimationFrame para ambos.
  * Con `reducedMotion` no se crea Lenis y el scroll es nativo.
@@ -18,6 +19,7 @@ export function initScroll(reducedMotion: boolean): Lenis | null {
     lenis = new Lenis({ autoRaf: false });
     lenis.on("scroll", (instance: Lenis) => {
       scrollState.velocity = instance.velocity;
+      scrollState.y = instance.scroll;
       ScrollTrigger.update();
     });
     gsap.ticker.add((time) => lenis?.raf(time * 1000));
@@ -30,9 +32,20 @@ export function initScroll(reducedMotion: boolean): Lenis | null {
     end: "bottom bottom",
     onUpdate: (self) => {
       scrollState.page = self.progress;
+      scrollState.y = self.scroll();
       scrollState.version++;
     },
   });
+
+  const heroVisual = document.querySelector<HTMLElement>(".hero__visual .planet-ph");
+  const measure = (): void => {
+    scrollState.y = window.scrollY;
+    if (heroVisual) writeRect(heroVisual, layoutState.hero);
+    layoutState.version++;
+    scrollState.version++;
+  };
+  ScrollTrigger.addEventListener("refresh", measure);
+  measure();
 
   SECTION_IDS.forEach((id, index) => {
     const el = document.getElementById(id);
@@ -66,4 +79,11 @@ export function initScroll(reducedMotion: boolean): Lenis | null {
   });
 
   return lenis;
+}
+
+function writeRect(el: HTMLElement, out: Rect): void {
+  const box = el.getBoundingClientRect();
+  out.x = box.left + box.width / 2;
+  out.y = box.top + window.scrollY + box.height / 2;
+  out.size = Math.min(box.width, box.height);
 }

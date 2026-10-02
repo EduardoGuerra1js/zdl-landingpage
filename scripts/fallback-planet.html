@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Genera public/fallback/planet.webp (ver scripts/make-fallback.mjs). Misma composición que .planet-ph. -->
+<!-- Genera public/fallback/planet.webp (ver scripts/make-fallback.mjs). Imita la pose de src/scene/objects/Planet.ts. -->
 <html>
   <body>
     <pre id="out"></pre>
@@ -10,53 +10,108 @@
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = S;
       const g = canvas.getContext("2d");
+      const accent = (a) => `rgba(91, 91, 240, ${a})`;
 
-      const ring = (frontOnly) => {
+      // Anillo visto de canto: círculo en un marco rotado y aplastado. `half` = "back" | "front".
+      const ring = (radius, width, roll, squash, style, half) => {
         g.save();
         g.translate(c, c);
-        g.rotate((-16 * Math.PI) / 180);
-        if (frontOnly) {
-          g.beginPath();
-          g.rect(-S, 0, S * 2, S);
-          g.clip();
-        }
+        g.rotate(-roll);
         g.beginPath();
-        g.ellipse(0, 0, S * 0.48, S * 0.13, 0, 0, Math.PI * 2);
+        if (half === "back") g.rect(-S, -S, S * 2, S);
+        else g.rect(-S, 0, S * 2, S);
+        g.clip();
+        g.scale(1, squash);
+        g.beginPath();
+        g.arc(0, 0, radius, 0, Math.PI * 2);
+        g.lineWidth = width;
+        g.strokeStyle = style;
+        g.stroke();
+        g.restore();
+      };
+      const band = (half) => ring(r * 1.36, r * 0.24, 0.24, 0.25, accent(0.1), half);
+      const line = (half) => {
+        g.save();
+        g.translate(c, c);
+        g.rotate(-0.3);
+        g.beginPath();
+        if (half === "back") g.rect(-S, -S, S * 2, S);
+        else g.rect(-S, 0, S * 2, S);
+        g.clip();
+        g.beginPath();
+        g.ellipse(0, 0, r * 1.62, r * 1.62 * 0.3, 0, 0, Math.PI * 2);
         g.lineWidth = 2;
-        g.strokeStyle = "rgba(91, 91, 240, 0.6)";
+        g.strokeStyle = accent(0.75);
         g.stroke();
         g.restore();
       };
 
-      ring(false);
-
-      const body = g.createRadialGradient(c - r * 0.32, c - r * 0.4, 0, c - r * 0.32, c - r * 0.4, r * 1.92);
-      body.addColorStop(0, "#34367a");
-      body.addColorStop(0.24, "#1a1c4c");
-      body.addColorStop(0.58, "#0c0b26");
-      body.addColorStop(0.82, "#07061a");
+      // Sombra suave sobre el papel.
       g.save();
-      g.shadowColor = "rgba(20, 22, 58, 0.45)";
-      g.shadowBlur = 56;
-      g.shadowOffsetY = 38;
-      g.beginPath();
-      g.arc(c, c, r, 0, Math.PI * 2);
-      g.fillStyle = body;
-      g.fill();
+      g.translate(c + r * 0.12, c + r * 0.55);
+      g.scale(1, 0.64);
+      const shadow = g.createRadialGradient(0, 0, 0, 0, 0, r * 2.4);
+      shadow.addColorStop(0, "rgba(20, 22, 58, 0.36)");
+      shadow.addColorStop(0.3, "rgba(20, 22, 58, 0.16)");
+      shadow.addColorStop(0.65, "rgba(20, 22, 58, 0)");
+      g.fillStyle = shadow;
+      g.fillRect(-S, -S * 2, S * 2, S * 4);
       g.restore();
 
+      band("back");
+      line("back");
+
+      // Atmósfera: halo índigo que cae del borde del cuerpo.
+      const halo = g.createRadialGradient(c, c, r * 0.98, c, c, r * 1.14);
+      halo.addColorStop(0, accent(0.18));
+      halo.addColorStop(1, accent(0));
+      g.fillStyle = halo;
+      g.beginPath();
+      g.arc(c, c, r * 1.14, 0, Math.PI * 2);
+      g.fill();
+
+      // Cuerpo de obsidiana.
       g.save();
       g.beginPath();
       g.arc(c, c, r, 0, Math.PI * 2);
       g.clip();
-      const rim = g.createRadialGradient(c - r * 0.1, c - r * 0.06, r * 0.9, c - r * 0.1, c - r * 0.06, r * 1.04);
-      rim.addColorStop(0, "rgba(91, 91, 240, 0)");
-      rim.addColorStop(1, "rgba(91, 91, 240, 0.6)");
+      const body = g.createRadialGradient(c - r * 0.35, c - r * 0.4, 0, c - r * 0.2, c - r * 0.2, r * 1.5);
+      body.addColorStop(0, "#16173d");
+      body.addColorStop(0.35, "#0b0a24");
+      body.addColorStop(1, "#050413");
+      g.fillStyle = body;
+      g.fillRect(0, 0, S, S);
+
+      const rim = g.createRadialGradient(c - r * 0.12, c - r * 0.08, r * 0.92, c - r * 0.12, c - r * 0.08, r * 1.1);
+      rim.addColorStop(0, accent(0));
+      rim.addColorStop(1, accent(0.7));
       g.fillStyle = rim;
+      g.fillRect(0, 0, S, S);
+
+      const sheen = g.createRadialGradient(c - r * 0.3, c - r * 0.48, 0, c - r * 0.3, c - r * 0.48, r * 0.36);
+      sheen.addColorStop(0, "rgba(237, 237, 255, 0.95)");
+      sheen.addColorStop(0.07, "rgba(237, 237, 255, 0.5)");
+      sheen.addColorStop(0.3, "rgba(160, 160, 230, 0.08)");
+      sheen.addColorStop(1, "rgba(160, 160, 230, 0)");
+      g.fillStyle = sheen;
       g.fillRect(0, 0, S, S);
       g.restore();
 
-      ring(true);
+      band("front");
+      line("front");
+
+      // Luna de piedra mate.
+      const mx = c - r * 1.55;
+      const my = c - r * 0.42;
+      const mr = r * 0.09;
+      const moon = g.createRadialGradient(mx - mr * 0.4, my - mr * 0.45, 0, mx, my, mr);
+      moon.addColorStop(0, "#b3b1d1");
+      moon.addColorStop(0.7, "#6d6c98");
+      moon.addColorStop(1, "#2a2b55");
+      g.fillStyle = moon;
+      g.beginPath();
+      g.arc(mx, my, mr, 0, Math.PI * 2);
+      g.fill();
 
       document.getElementById("out").textContent = canvas.toDataURL("image/webp", 0.8);
     </script>

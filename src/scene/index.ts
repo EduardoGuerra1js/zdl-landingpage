@@ -1,4 +1,5 @@
-import { TestCube } from "./objects/TestCube";
+import { layoutState } from "./LayoutState";
+import { Planet } from "./objects/Planet";
 import { pointerState, trackPointer } from "./PointerState";
 import { SceneManager } from "./SceneManager";
 import { scrollState } from "./ScrollState";
@@ -22,11 +23,12 @@ export function startScene(options: StartSceneOptions): SceneManager {
     const manager = new SceneManager(canvas, {
       scroll: scrollState,
       pointer: pointerState,
+      layout: layoutState,
       reducedMotion: options.reducedMotion,
       onContextLost: options.onContextLost,
     });
     if (!options.reducedMotion) trackPointer();
-    manager.add(new TestCube());
+    manager.add(new Planet(manager.renderer, manager.quality.current));
     manager.start();
     return manager;
   } catch (error) {

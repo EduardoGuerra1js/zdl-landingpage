@@ -1,4 +1,5 @@
 import { PerspectiveCamera, Scene, WebGLRenderer, type Object3D } from "three";
+import type { LayoutData } from "./LayoutState";
 import type { PointerData } from "./PointerState";
 import { QualityManager, type QualityParams } from "./QualityManager";
 import type { ScrollStateData } from "./ScrollState";
@@ -9,8 +10,8 @@ import type { ScrollStateData } from "./ScrollState";
  * - Tamaño solo vía ResizeObserver; nunca lee layout dentro del bucle.
  * - Cada frame arma un `FrameContext` reutilizado (cero asignaciones) y lo pasa a cada objeto.
  * - Pausa con motivos acumulables: con cualquier motivo activo no hay rAF.
- * - Con reduced motion el tiempo se congela y solo se renderiza cuando cambia la sección
- *   activa, el tamaño o la calidad: estado estático por sección.
+ * - Con reduced motion el tiempo se congela y solo se renderiza cuando cambian el scroll,
+ *   el layout, el tamaño o la calidad: la escena acompaña al contenido como una imagen fija.
  */
 
 export interface FrameContext {
@@ -20,11 +21,15 @@ export interface FrameContext {
   delta: number;
   scroll: Readonly<ScrollStateData>;
   pointer: Readonly<PointerData>;
+  layout: Readonly<LayoutData>;
   quality: Readonly<QualityParams>;
   reducedMotion: boolean;
   /** Semiancho y semialto visibles en el plano z = 0, en unidades de mundo. */
   viewHalfWidth: number;
   viewHalfHeight: number;
+  /** Tamaño CSS del canvas en px (el canvas empieza en y = 0 del viewport). */
+  viewportWidth: number;
+  viewportHeight: number;
 }
 
 export interface SceneObject {
@@ -40,6 +45,7 @@ export type PauseReason = "hidden" | "offscreen" | "context-lost";
 export interface SceneManagerOptions {
   scroll: Readonly<ScrollStateData>;
   pointer: Readonly<PointerData>;
+  layout: Readonly<LayoutData>;
   reducedMotion: boolean;
   onContextLost?: () => void;
 }
@@ -62,7 +68,8 @@ export class SceneManager {
   private rafId = 0;
   private lastNow = -1;
   private needsRender = true;
-  private renderedActive = -1;
+  private renderedScrollVersion = -1;
+  private renderedLayoutVersion = -1;
   private width = 1;
   private height = 1;
 
@@ -89,10 +96,13 @@ export class SceneManager {
       delta: 0,
       scroll: options.scroll,
       pointer: options.pointer,
+      layout: options.layout,
       quality: this.quality.current,
       reducedMotion: options.reducedMotion,
       viewHalfWidth: 1,
       viewHalfHeight: 1,
+      viewportWidth: 1,
+      viewportHeight: 1,
     };
 
     this.resizeObserver = new ResizeObserver(this.handleResize);
@@ -153,7 +163,9 @@ export class SceneManager {
     const ctx = this.ctx;
 
     if (ctx.reducedMotion) {
-      if (!this.needsRender && ctx.scroll.active === this.renderedActive) return;
+      const unchanged =
+        ctx.scroll.version === this.renderedScrollVersion && ctx.layout.version === this.renderedLayoutVersion;
+      if (!this.needsRender && unchanged) return;
       ctx.delta = 0;
     } else {
       ctx.delta = Math.min(rawDelta, MAX_DELTA);
@@ -164,7 +176,8 @@ export class SceneManager {
     for (const object of this.objects) object.update(ctx);
     this.renderer.render(this.scene, this.camera);
     this.needsRender = false;
-    this.renderedActive = ctx.scroll.active;
+    this.renderedScrollVersion = ctx.scroll.version;
+    this.renderedLayoutVersion = ctx.layout.version;
   };
 
   private setSize(width: number, height: number): void {
@@ -176,6 +189,8 @@ export class SceneManager {
     this.camera.updateProjectionMatrix();
     this.ctx.viewHalfHeight = Math.tan(((CAMERA_FOV / 2) * Math.PI) / 180) * CAMERA_Z;
     this.ctx.viewHalfWidth = this.ctx.viewHalfHeight * this.camera.aspect;
+    this.ctx.viewportWidth = this.width;
+    this.ctx.viewportHeight = this.height;
 
     for (const object of this.objects) object.onResize?.(this.ctx);
     this.needsRender = true;

@@ -23,6 +23,8 @@ export type SectionId = (typeof SECTION_IDS)[number];
 export interface ScrollStateData {
   /** Progreso de toda la página, 0 (arriba) a 1 (abajo). */
   page: number;
+  /** Scroll vertical en px (el que pinta el DOM en este frame). */
+  y: number;
   /**
    * Progreso por sección, 0..1: 0 cuando el borde superior de la sección entra por abajo
    * del viewport, 1 cuando su borde inferior sale por arriba.
@@ -44,6 +46,7 @@ function createSections(): Record<SectionId, number> {
 
 export const scrollState: ScrollStateData = {
   page: 0,
+  y: 0,
   sections: createSections(),
   active: 0,
   velocity: 0,

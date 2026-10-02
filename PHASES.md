@@ -42,7 +42,7 @@ Estados: `Pendiente` · `En curso` · `Completada`.
 | 0 | Contexto | Sonnet 5.5 | Completada |
 | 1 | Base HTML/CSS (sin 3D) | Opus 5.5 | Completada |
 | 2 | Motor 3D y calidad adaptativa | Opus 5.5 | Completada |
-| 3 | Planeta del hero | Opus 5.5 (rescate: Opus 5 Thinking High) | Pendiente |
+| 3 | Planeta del hero | Opus 5.5 (rescate: Opus 5 Thinking High) | Completada |
 | 4 | Coreografía del scroll | Sonnet 5.5 | Pendiente |
 | 5 | CTA y agujero negro | Opus 5.5 (rescate: Opus 5 Thinking High) | Pendiente |
 | 6 | UX/UI, microinteracciones y pulido | Sonnet 5.5 | Pendiente |
@@ -62,7 +62,11 @@ Decisiones transversales registradas aquí a medida que se toman:
 - **Carga del 3D:** `main.ts` (bundle inicial: CSS + GSAP + ScrollTrigger + Lenis, ~51 KB gzip) y `import("./scene")` tras `load` + `requestIdleCallback`. Three.js y todo `src/scene/` salvo `ScrollState`/`PointerState` viven en el chunk diferido `scene-*.js`.
 - **Estados en `<html>`:** `.has-webgl` (canvas activo), `.no-webgl` (fallback) y `data-quality="high|medium|low"`. Son el punto de enganche del CSS que dependa del 3D.
 - **Un solo rAF por subsistema:** Lenis avanza en `gsap.ticker`; la escena tiene su propio rAF en `SceneManager` (no depende de GSAP).
-- **Reduced motion:** sin Lenis (scroll nativo) y la escena con tiempo congelado, renderizando solo al cambiar sección activa, tamaño o calidad. Se lee una vez al cargar.
+- **Reduced motion:** sin Lenis (scroll nativo) y la escena con tiempo congelado, renderizando solo cuando cambian el scroll, el layout, el tamaño o la calidad (desde la Fase 3; antes, solo al cambiar la sección activa). Se lee una vez al cargar.
+- **Planeta:** variante **obsidiana pulida** elegida frente a "roca lunar" (la roca gris sobre papel claro tenía poco contraste y necesitaba texturas grandes). La luna sí es de piedra mate, para contrastar materiales.
+- **Texturas procedurales horneadas en GPU:** el relieve del planeta se genera una vez en un render target equirectangular (`textureSize × textureSize/2`) con ruido 3D. No hay WebP de textura en el bundle y el costo por frame es cero. Se rehornea solo si baja `textureSize`.
+- **GLSL:** archivos `.glsl/.vert/.frag` en `src/scene/shaders/`, importados con `?raw` de Vite (sin plugins). Los colores de los shaders son sRGB directos: los `ShaderMaterial` no incluyen conversión de espacio de color, y las constantes se escriben en GLSL para no pasar por la gestión de color de `THREE.Color`.
+- **Alinear 3D con el DOM:** `ui/scroll.ts` mide en cada `refresh` de ScrollTrigger los rectángulos que la escena necesita (`layoutState`, en px de documento) y escribe `scrollState.y`. La escena convierte px a mundo con `FrameContext.viewportWidth/Height`. Nunca mide el DOM en el bucle.
 
 ---
 
@@ -209,9 +213,61 @@ _Alcance:_ `SceneManager`, `QualityManager`, `ScrollState`, cableado Lenis + GSA
 ---
 
 ### Fase 3 — Planeta del hero · Opus 5.5 (rescate: Opus 5 Thinking High)
-**Estado:** Pendiente
+**Estado:** Completada · 2026-10-01
 
 _Alcance:_ proponer 2 variantes (obsidiana pulida vs roca lunar) y elegir; shader del planeta, rim índigo, atmósfera fresnel con blending normal, sombra suave, dos anillos, luna, polvo en GPU, parallax con puntero (no táctil), posición responsive; medir FPS en nivel medio.
+
+**Variantes**
+- **A. Obsidiana pulida (elegida):** cuerpo casi negro índigo, especular nítido y rim `#5B5BF0`. Sobre papel claro funciona como una silueta de alto contraste, y el volumen sale del rim y del brillo, sin blending aditivo.
+- **B. Roca lunar:** gris lavanda mate con cráteres. Sobre `#F7F6FC` el contraste es bajo, el rim casi no se distingue y el relieve pide texturas grandes. Se descartó; su material quedó para la luna.
+
+**Resumen de cambios**
+- `src/scene/objects/Planet.ts` — `SceneObject` del planeta, todo en unidades de radio y con `root` escalado al radio en mundo. Lo componen el cuerpo (esfera 96×64 con eje inclinado 0.32 rad, giro 0.045 rad/s), la atmósfera (esfera 1.14 en `BackSide`), la sombra, una banda translúcida (radios 1.22–1.5), un anillo de línea (1.62), la luna (radio 0.09, órbita 1.82 a 0.11 rad/s) y el polvo. Los anillos van inclinados casi de canto, con la mitad inferior por delante, igual que el marcador CSS; el buffer de profundidad oculta lo que pasa detrás del cuerpo. Parallax con el puntero: 0.25 unidades de desplazamiento más 0.08 rad de giro en los anillos, amortiguado y apagado en táctil y con reduced motion. Se oculta (`visible = false`) cuando sale por arriba del viewport.
+- `src/scene/objects/Dust.ts` — `Points` con atributos estáticos (`aOrbit`: radio, fase, altura, velocidad; `aLook`: tamaño en px y tono). El buffer se reserva una vez para 600 partículas y la calidad solo cambia `setDrawRange` (600/300/120), así que no realoca. PRNG determinista. Disco inclinado como la banda, más un 25 % en cáscara.
+- `src/scene/textures/bakePlanetTexture.ts` — un pase a un `WebGLRenderTarget` equirectangular con mipmaps, `RepeatWrapping` horizontal y anisotropía ≤ 4. RGB es la normal en espacio de objeto con el relieve aplicado y A es la máscara de vetas.
+- `src/scene/shaders/` — `noise.glsl` (simplex 3D de Ashima/Gustavson, MIT, y fbm de 4 octavas), `fullscreen.vert` + `bake.frag` (fbm suave, vetas con ridged noise y micro-relieve; la normal se obtiene por diferencias finitas en 3D, sin costura ni pellizco en los polos), `surface.vert` (compartido), `planet.frag` (difuso envolvente, especular nítido con normal casi lisa más un brillo amplio, reflejo tenue del papel en el borde superior y rim índigo en el lado opuesto a la luz), `atmosphere.frag` (el alfa cae del borde del cuerpo hacia fuera según la distancia proyectada, con algo más de peso en el lado del rim), `ring.vert/.frag` (modo banda con estrías y modo línea de ~1.5 px de pantalla con `fwidth`), `moon.frag` (mate, sin especular), `shadow.frag` (gaussiana índigo noche) y `dust.vert/.frag`.
+- `src/scene/LayoutState.ts` — **nuevo**, `layoutState.hero` (centro y lado de `.hero__visual .planet-ph` en px de documento) con `version`. Bundle inicial, sin Three.js.
+- `src/scene/ScrollState.ts` — nuevo campo `y` (px de scroll).
+- `src/ui/scroll.ts` — también escribe `scrollState.y` (desde Lenis y desde el ScrollTrigger global) y mide `layoutState.hero` en cada `refresh` de ScrollTrigger (carga, resize) y al iniciar.
+- `src/scene/SceneManager.ts` — `FrameContext` gana `layout`, `viewportWidth` y `viewportHeight` (px CSS del canvas); `SceneManagerOptions` gana `layout`. Con reduced motion renderiza cuando cambian `scroll.version` o `layout.version` (antes, solo al cambiar `active`), para que el planeta acompañe al scroll como una imagen fija.
+- `src/scene/index.ts` — registra `Planet` en lugar del cubo. **Se borró `objects/TestCube.ts`.**
+- `scripts/fallback-planet.html` + `public/fallback/planet.webp` — el dibujo 2D imita la pose final: sombra, banda y línea por detrás y por delante, halo, cuerpo de obsidiana con brillo y rim, y luna. 640×640, 48 KB (antes 29 KB; solo se descarga sin WebGL).
+- `README.md` — carpetas `LayoutState` y `textures/`.
+
+**Verificación**
+- `npm run build` sin errores (incluye `tsc --noEmit`); sin errores de lint del IDE en `src/`. Peso gzip: **JS inicial 51.2 KB** (sin cambio), CSS 4.8 KB; chunk diferido `scene` **138.2 KB** (antes 134.6: el planeta y los shaders suman ~3.6 KB). El HTML no precarga el chunk de la escena.
+- FPS en escritorio (1660×916, DPR 1), con reduced motion desactivado por emulación porque el sistema de pruebas lo tiene activo: **`?quality=medio` 60 FPS (p95 16.8 ms)**, **medio con CPU 4× más lenta 60 FPS (p95 16.8 ms)** y **`?quality=alto` 60 FPS (p95 16.8 ms)**. Sin tareas largas (> 50 ms) al cargar, incluido el horneado de 2048×1024.
+- Alineación: el centro del planeta coincide con el de `.planet-ph` (1163, 463 px) y sube con el hero al hacer scroll (con `scrollTo(0, 350)` el centro pasa a y=113 y el planeta lo sigue).
+- Responsive: 360×780 (DPR 3, táctil → nivel medio, canvas a DPR 1.5): el planeta va en la franja superior y el marcador termina en y=268, antes del eyebrow y del `h1` (y=327). 768: arriba, centrado. 1024 y 1440: columna derecha, sin tocar el titular ni el subtítulo (por eso se redujeron la órbita de la luna, de 1.95 a 1.82, y el radio del polvo, de 2.1 a 1.95).
+- Alfa sobre papel: sin halos oscuros en el borde de la atmósfera ni en los anillos (shaders sin premultiplicar + `NormalBlending` sobre clear transparente).
+- Reduced motion: sin Lenis, pose fija (sin giro, luna ni polvo en movimiento) y el planeta acompaña al scroll nativo.
+- Sin WebGL (simulado quitando el canvas y poniendo `.no-webgl`): el hero muestra el nuevo `planet.webp`.
+- **No verificado:** el parallax con un puntero real (el navegador de pruebas no mueve el ratón; el código es directo) y el rendimiento en un móvil real.
+
+**Desviaciones del plan**
+- **El planeta se ancla al marcador del DOM** con `layoutState` en lugar de una posición fija en mundo: así el fundido de la Fase 2 coincide con el marcador CSS y el planeta sube con el hero. Mientras no llegue la Fase 4, al bajar del hero el planeta sale por arriba y se oculta; el resto de la página queda sin 3D.
+- **Extensiones al motor de la Fase 2** (no se reabrió): `layout` y `viewportWidth/Height` en `FrameContext`, y el criterio de re-render con reduced motion.
+- **Sombra "proyectada sobre la página"**: es una mancha gaussiana en el canvas, detrás y debajo del cuerpo. El canvas no puede dibujar sobre el DOM.
+- **Anillo de línea con `fwidth`** sobre un `RingGeometry` ancho, porque `linewidth` no funciona en WebGL. El grosor queda en ~1.5 px de pantalla a cualquier tamaño.
+- **Parallax de 0.25 unidades** (menos que el máximo de 0.4) más 0.08 rad de giro de los anillos, para que se sienta en capas y no como un objeto que se desliza.
+- El `planet.webp` creció a 48 KB por el halo y la sombra suaves.
+
+**Handoff a la Fase 4**
+- Le toca: la coreografía del Prompt 4. El planeta recorre la página con scrub lineal (posición, escala, rotación, inclinación de anillos) sin tapar texto; el holograma AR en "Sobre"; la órbita SVG con satélite en "Proceso"; la secuencia de entrada del hero y los revelados mínimos; la tabla de estados por sección.
+- Quedó listo:
+  - **`Planet.update(ctx)`** calcula la pose "home" del hero a partir de `ctx.layout.hero` + `ctx.scroll.y` (`x`, `y`, `radius`). La coreografía debería mezclar esa pose con objetivos por sección según `ctx.scroll.sections[id]` (lineal). Los grupos que se pueden animar son `root` (posición y escala), `spin` (inclinación del eje), `body.rotation.y` (giro), `rings` (inclinación conjunta; cada anillo tiene su `pivot` con `rotation.z` y su malla con `rotation.x`) y `moonSpin`.
+  - **`layoutState`** se puede ampliar con más rectángulos (por ejemplo `.about__panel` para el holograma o los márgenes libres de cada sección): se añade el campo en `LayoutData` y se mide en `measure()` de `ui/scroll.ts`.
+  - Hoy `root.visible` se apaga cuando el planeta sale por arriba; la Fase 4 debe reemplazar esa condición cuando el planeta viaje por la página.
+  - `uOpacity` de la atmósfera, los anillos, la sombra y el polvo son uniforms por material: sirven para atenuar capas por sección (por ejemplo, en el holograma).
+  - El mapa horneado (`uMap`) trae la máscara de vetas en el canal A; el holograma puede reutilizarlo para la malla o la línea de escaneo sin otra textura.
+- Pendientes / riesgos:
+  - **La franja de pilares y otras secciones tienen fondo opaco** (`--bg-soft`), así que el canvas no se ve detrás. Si el planeta debe cruzarlas, hay que hacerlas translúcidas o mantenerlo en los márgenes.
+  - El `header` de vidrio desenfoca el planeta al pasar por debajo; se ve bien, pero cuesta `backdrop-filter` con el canvas animado (riesgo de la Fase 1).
+  - Al rehornear la textura en `onQualityChange` (2048 → 1024 → 512) puede haber un tirón de un frame; solo pasa al bajar de nivel.
+  - El holograma de "Sobre" sigue necesitando que `.about__panel` deje ver el canvas (es opaco). Al hacerlo, quitar la retícula CSS y el marcador `.planet-ph--panel`.
+- Para fases posteriores (anotado, no implementado):
+  - **Fase 5:** el colapso del planeta puede animar `root.scale` y los `uOpacity`. El canvas sigue sin `offscreen`; cuando el planeta no se ve y aún no hay agujero negro, se renderiza un frame vacío (barato, pero se puede pausar).
+  - **Fase 7:** medir el horneado de 2048×1024 en GPU integradas y el costo de `backdrop-filter` del header con el planeta debajo. Comprobar el parallax con un ratón real.
 
 ---
 
