@@ -51,7 +51,7 @@ export interface SceneManagerOptions {
 }
 
 const CAMERA_FOV = 35;
-const CAMERA_Z = 10;
+export const CAMERA_Z = 10;
 const MAX_DELTA = 0.1;
 
 export class SceneManager {

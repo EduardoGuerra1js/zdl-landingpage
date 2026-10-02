@@ -1,6 +1,6 @@
 /**
  * Contrato: estado único del scroll, compartido entre la UI y la escena.
- * - ESCRIBEN solo `ui/scroll.ts` (Lenis + GSAP ScrollTrigger).
+ * - ESCRIBEN solo `ui/scroll.ts` (Lenis + GSAP ScrollTrigger) y, para `scan`, `ui/reveals.ts`.
  * - La escena solo LEE; nunca consulta el DOM en el frame loop.
  * - Las escrituras mutan este objeto en sitio (cero asignaciones) e incrementan `version`.
  * Este módulo no importa Three.js: vive en el bundle inicial.
@@ -34,6 +34,8 @@ export interface ScrollStateData {
   active: number;
   /** Velocidad de Lenis en px/frame (con signo). 0 sin Lenis (reduced motion). */
   velocity: number;
+  /** Escaneo AR de "Sobre", 0..1. Un tween lo lleva a 1 una sola vez; no depende del scroll. */
+  scan: number;
   /** Se incrementa con cada escritura; permite render bajo demanda. */
   version: number;
 }
@@ -50,5 +52,6 @@ export const scrollState: ScrollStateData = {
   sections: createSections(),
   active: 0,
   velocity: 0,
+  scan: 0,
   version: 0,
 };

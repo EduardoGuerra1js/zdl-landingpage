@@ -19,6 +19,7 @@
     />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="es_MX" />
+    <script>document.documentElement.classList.add("js");</script>
   </head>
   <body>
     <!-- Sprite: isotipo de marca (geometría intacta, color vía variables) e iconos de línea. -->
@@ -106,13 +107,13 @@
       <section class="hero" id="inicio" aria-labelledby="hero-title">
         <div class="container hero__inner">
           <div class="hero__copy">
-            <p class="eyebrow">Laboratorio de AR y 3D</p>
-            <h1 id="hero-title">Diseñamos el futuro desde el laboratorio.</h1>
-            <p class="lead">
+            <p class="eyebrow" data-hero-reveal>Laboratorio de AR y 3D</p>
+            <h1 id="hero-title" data-hero-reveal>Diseñamos el futuro desde el laboratorio.</h1>
+            <p class="lead" data-hero-reveal>
               Investigamos, prototipamos y probamos experiencias de realidad aumentada y 3D para convertir ideas
               audaces en soluciones que funcionan en el mundo real.
             </p>
-            <div class="hero__actions">
+            <div class="hero__actions" data-hero-reveal>
               <a class="btn btn--primary" href="#proyectos">
                 Ver proyectos
                 <svg class="i" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg>
@@ -171,7 +172,7 @@
       <!-- 3. Qué hacemos -->
       <section class="section" id="que-hacemos" aria-labelledby="que-hacemos-title">
         <div class="container">
-          <header class="section-head">
+          <header class="section-head" data-reveal>
             <p class="eyebrow">Qué hacemos</p>
             <h2 id="que-hacemos-title">De ideas extraordinarias a realidades tangibles.</h2>
             <p class="lead">
@@ -179,7 +180,7 @@
               puede sostener en la mano.
             </p>
           </header>
-          <ul class="cards-grid cards-grid--4" role="list">
+          <ul class="cards-grid cards-grid--4" role="list" data-reveal>
             <li class="glass-card service-card">
               <span class="icon-tile"><svg class="i" aria-hidden="true" focusable="false"><use href="#i-orbit" /></svg></span>
               <h3>Investigación y exploración</h3>
@@ -211,7 +212,7 @@
       <!-- 4. Sobre Zero Day Labs -->
       <section class="section about" id="sobre" aria-labelledby="sobre-title">
         <div class="container about__inner">
-          <div class="about__copy">
+          <div class="about__copy" data-reveal>
             <header class="section-head">
               <p class="eyebrow">Sobre Zero Day Labs</p>
               <h2 id="sobre-title">Un laboratorio para un mañana más abierto.</h2>
@@ -260,49 +261,60 @@
       <!-- 5. Proceso -->
       <section class="section process" id="proceso" aria-labelledby="proceso-title">
         <div class="container">
-          <header class="section-head">
+          <header class="section-head" data-reveal>
             <p class="eyebrow">Nuestro proceso</p>
             <h2 id="proceso-title">De la curiosidad al impacto.</h2>
             <p class="lead">Cuatro etapas, en este orden. Cada una termina con algo que se puede probar.</p>
           </header>
-          <ol class="process__steps" role="list">
-            <li class="process-step">
-              <span class="process-step__index" aria-hidden="true">01</span>
-              <h3>Explorar</h3>
-              <p>Identificamos preguntas audaces y oportunidades: el contexto, las personas y la tecnología disponible.</p>
-              <span class="process-step__time mono">1–2 semanas</span>
-            </li>
-            <li class="process-step">
-              <span class="process-step__index" aria-hidden="true">02</span>
-              <h3>Diseñar</h3>
-              <p>Convertimos ideas en conceptos y storyboards espaciales; definimos qué debe sentirse real y qué puede ser digital.</p>
-              <span class="process-step__time mono">2–3 semanas</span>
-            </li>
-            <li class="process-step">
-              <span class="process-step__index" aria-hidden="true">03</span>
-              <h3>Construir</h3>
-              <p>Desarrollamos prototipos AR y 3D funcionales, los probamos en el lugar y los iteramos cada semana.</p>
-              <span class="process-step__time mono">4–8 semanas</span>
-            </li>
-            <li class="process-step">
-              <span class="process-step__index" aria-hidden="true">04</span>
-              <h3>Lanzar</h3>
-              <p>Escalamos lo que funciona: optimizamos, documentamos y acompañamos la salida al mundo.</p>
-              <span class="process-step__time mono">Continuo</span>
-            </li>
-          </ol>
+          <div class="process__track" data-reveal>
+            <!-- Órbita: la curva pasa por los cuatro índices; ui/process.ts la arma y la dibuja con el scroll. -->
+            <svg class="process__orbit" aria-hidden="true" focusable="false">
+              <path class="process__orbit-track" />
+              <path class="process__orbit-trail" />
+              <g class="process__satellite">
+                <circle r="9" class="process__satellite-halo" />
+                <circle r="4.5" />
+              </g>
+            </svg>
+            <ol class="process__steps" role="list">
+              <li class="process-step">
+                <span class="process-step__index" aria-hidden="true">01</span>
+                <h3>Explorar</h3>
+                <p>Identificamos preguntas audaces y oportunidades: el contexto, las personas y la tecnología disponible.</p>
+                <span class="process-step__time mono">1–2 semanas</span>
+              </li>
+              <li class="process-step">
+                <span class="process-step__index" aria-hidden="true">02</span>
+                <h3>Diseñar</h3>
+                <p>Convertimos ideas en conceptos y storyboards espaciales; definimos qué debe sentirse real y qué puede ser digital.</p>
+                <span class="process-step__time mono">2–3 semanas</span>
+              </li>
+              <li class="process-step">
+                <span class="process-step__index" aria-hidden="true">03</span>
+                <h3>Construir</h3>
+                <p>Desarrollamos prototipos AR y 3D funcionales, los probamos en el lugar y los iteramos cada semana.</p>
+                <span class="process-step__time mono">4–8 semanas</span>
+              </li>
+              <li class="process-step">
+                <span class="process-step__index" aria-hidden="true">04</span>
+                <h3>Lanzar</h3>
+                <p>Escalamos lo que funciona: optimizamos, documentamos y acompañamos la salida al mundo.</p>
+                <span class="process-step__time mono">Continuo</span>
+              </li>
+            </ol>
+          </div>
         </div>
       </section>
 
       <!-- 6. Proyectos destacados -->
       <section class="section" id="proyectos" aria-labelledby="proyectos-title">
         <div class="container">
-          <header class="section-head">
+          <header class="section-head" data-reveal>
             <p class="eyebrow">Proyectos destacados</p>
             <h2 id="proyectos-title">Ideas en acción.</h2>
             <p class="lead">Tres experimentos que muestran cómo pensamos: de la interfaz en tu mano a la escala de un planeta.</p>
           </header>
-          <ul class="cards-grid cards-grid--3" role="list">
+          <ul class="cards-grid cards-grid--3" role="list" data-reveal>
             <li class="glass-card project-card">
               <div class="project-card__media" aria-hidden="true">
                 <svg viewBox="0 0 400 250" class="project-art">
@@ -364,12 +376,12 @@
       <!-- 7. Áreas que exploramos -->
       <section class="section areas" id="areas" aria-labelledby="areas-title">
         <div class="container areas__inner">
-          <header class="section-head">
+          <header class="section-head" data-reveal>
             <p class="eyebrow">Áreas que exploramos</p>
             <h2 id="areas-title">Donde el 3D se cruza con todo lo demás.</h2>
             <p class="lead">La realidad aumentada rara vez vive sola. Estas son las disciplinas con las que la combinamos.</p>
           </header>
-          <ul class="areas__chips" role="list">
+          <ul class="areas__chips" role="list" data-reveal>
             <li class="chip chip--outline">Inteligencia artificial</li>
             <li class="chip chip--outline">Robótica</li>
             <li class="chip chip--outline">Hardware embebido</li>
@@ -385,12 +397,12 @@
       <!-- 8. Blog -->
       <section class="section" id="blog" aria-labelledby="blog-title">
         <div class="container">
-          <header class="section-head">
+          <header class="section-head" data-reveal>
             <p class="eyebrow">Blog</p>
             <h2 id="blog-title">Notas desde el laboratorio.</h2>
             <p class="lead">Lo que aprendemos construyendo, contado sin humo.</p>
           </header>
-          <ul class="cards-grid cards-grid--3" role="list">
+          <ul class="cards-grid cards-grid--3" role="list" data-reveal>
             <li>
               <article class="glass-card post-card">
                 <div class="post-card__meta">

@@ -10,6 +10,7 @@ import dustVert from "../shaders/dust.vert?raw";
 const MAX_PARTICLES = 600;
 const INNER = 1.25;
 const OUTER = 1.95;
+const OPACITY = 0.5;
 
 export class Dust {
   readonly points: Points;
@@ -17,6 +18,7 @@ export class Dust {
   private readonly material: ShaderMaterial;
   private readonly uTime = { value: 0 };
   private readonly uPixelRatio = { value: 1 };
+  private readonly uOpacity = { value: OPACITY };
 
   constructor(quality: Readonly<QualityParams>) {
     const orbit = new Float32Array(MAX_PARTICLES * 4);
@@ -47,7 +49,7 @@ export class Dust {
       uniforms: {
         uTime: this.uTime,
         uPixelRatio: this.uPixelRatio,
-        uOpacity: { value: 0.5 },
+        uOpacity: this.uOpacity,
       },
     });
 
@@ -57,8 +59,10 @@ export class Dust {
     this.setQuality(quality);
   }
 
-  update(time: number): void {
+  /** `fade` multiplica la opacidad base (la coreografía atenúa el polvo por sección). */
+  update(time: number, fade: number): void {
     this.uTime.value = time;
+    this.uOpacity.value = OPACITY * fade;
   }
 
   setQuality(quality: Readonly<QualityParams>): void {

@@ -1,4 +1,5 @@
 import { layoutState } from "./LayoutState";
+import { AboutBackdrop } from "./objects/AboutBackdrop";
 import { Planet } from "./objects/Planet";
 import { pointerState, trackPointer } from "./PointerState";
 import { SceneManager } from "./SceneManager";
@@ -28,6 +29,7 @@ export function startScene(options: StartSceneOptions): SceneManager {
       onContextLost: options.onContextLost,
     });
     if (!options.reducedMotion) trackPointer();
+    manager.add(new AboutBackdrop());
     manager.add(new Planet(manager.renderer, manager.quality.current));
     manager.start();
     return manager;

@@ -288,6 +288,23 @@
   }
 }
 
+/* Con WebGL, las franjas de pilares y áreas son vidrio para que el planeta pase por detrás.
+   82 % de --bg-soft: aun con el planeta (#07061A) detrás y sin contar el blur, --muted queda en
+   ~4.7:1. En calidad baja se quita el blur y el fondo queda casi opaco. */
+.has-webgl .pillars,
+.has-webgl .areas {
+  background: rgba(232, 232, 250, 0.82);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.has-webgl[data-quality="low"] .pillars,
+.has-webgl[data-quality="low"] .areas {
+  background: rgba(232, 232, 250, 0.95);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* ---------- Rejillas de tarjetas ---------- */
 
 .cards-grid {
@@ -415,6 +432,17 @@
   width: min(100%, 26rem);
 }
 
+/* Con la escena lista, el fondo, la retícula y la sombra del panel los dibuja el canvas
+   (AboutBackdrop) para que el planeta pueda entrar. Deben coincidir con los de arriba. */
+.scene-ready .about__panel {
+  background: none;
+  box-shadow: none;
+}
+
+.scene-ready .planet-ph--panel {
+  visibility: hidden;
+}
+
 .planet-ph--panel .planet-ph__body {
   box-shadow: inset -0.75rem -0.25rem 1.5rem -0.5rem rgba(165, 165, 255, 0.7);
 }
@@ -442,6 +470,10 @@
 
 /* ---------- 5. Proceso ---------- */
 
+.process__track {
+  position: relative;
+}
+
 .process__steps {
   position: relative;
   display: grid;
@@ -449,15 +481,45 @@
   counter-reset: none;
 }
 
-/* Línea guía: vertical en móvil, horizontal en escritorio. La órbita SVG llega en la Fase 4. */
-.process__steps::before {
-  content: "";
+/* Órbita (ui/process.ts): pista punteada, trazo que se dibuja con el scroll y satélite. Va
+   debajo de los índices, que son opacos: el satélite "atraca" en cada uno. */
+.process__orbit {
   position: absolute;
-  top: 1.375rem;
-  bottom: 1.375rem;
-  left: 1.375rem;
-  width: 1px;
-  background: var(--line-strong);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.process__orbit path {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.process__orbit-track {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+}
+
+.process__orbit-trail {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.process__satellite {
+  fill: var(--accent);
+}
+
+.process__satellite-halo {
+  fill: rgba(91, 91, 240, 0.18);
+}
+
+.process-step.is-reached .process-step__index {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 .process-step {
@@ -478,15 +540,6 @@
   .process__steps {
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-6);
-  }
-
-  .process__steps::before {
-    top: 1.375rem;
-    bottom: auto;
-    left: 1.375rem;
-    right: calc((100% - 3 * var(--space-6)) / 4 - 1.375rem);
-    width: auto;
-    height: 1px;
   }
 
   .process-step {

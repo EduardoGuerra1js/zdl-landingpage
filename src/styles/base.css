@@ -385,6 +385,23 @@ p {
   color: var(--accent-ink);
 }
 
+/* Estado inicial de la entrada del hero (la anima ui/reveals.ts). `.js` lo pone un script en
+   línea del <head>; si el JS no llega a correr, la animación de respaldo lo muestra a los 3 s. */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-hero-reveal] {
+    opacity: 0.01;
+    transform: translateY(12px);
+    animation: hero-reveal-fallback 0.6s 3s forwards;
+  }
+}
+
+@keyframes hero-reveal-fallback {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

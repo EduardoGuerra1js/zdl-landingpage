@@ -4,6 +4,8 @@ uniform sampler2D uMap;
 uniform mat3 normalMatrix;
 uniform vec3 uLightDir;
 uniform vec3 uRimDir;
+// Peso del reflejo del papel: 1 sobre la página clara, 0 dentro del panel oscuro.
+uniform float uEnv;
 
 varying vec2 vUv;
 varying vec3 vNormal;
@@ -35,7 +37,7 @@ void main() {
   vec3 r = reflect(-v, n);
   float env = smoothstep(-0.1, 0.9, r.y) * smoothstep(-0.4, 0.6, dot(ns, l));
   float fres = pow(1.0 - facing, 4.0);
-  color = mix(color, PAPER, fres * env * 0.32);
+  color = mix(color, PAPER, fres * env * 0.32 * uEnv);
 
   float rim = pow(1.0 - facing, 2.4) * smoothstep(-0.15, 0.7, dot(ns, uRimDir));
   color += ACCENT * rim * 1.15;

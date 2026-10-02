@@ -1,4 +1,5 @@
 import {
+  AdditiveBlending,
   BackSide,
   DoubleSide,
   Group,
@@ -11,9 +12,11 @@ import {
   type WebGLRenderer,
   type WebGLRenderTarget,
 } from "three";
+import { Choreography } from "../choreography";
 import type { QualityParams } from "../QualityManager";
 import type { FrameContext, SceneObject } from "../SceneManager";
 import atmosphereFrag from "../shaders/atmosphere.frag?raw";
+import hologramFrag from "../shaders/hologram.frag?raw";
 import moonFrag from "../shaders/moon.frag?raw";
 import planetFrag from "../shaders/planet.frag?raw";
 import ringFrag from "../shaders/ring.frag?raw";
@@ -27,13 +30,12 @@ import { Dust } from "./Dust";
  * Planeta del hero: obsidiana pulida con rim índigo, atmósfera fresnel (blending normal), sombra
  * suave, banda translúcida, anillo de línea, luna y polvo.
  * - Todo vive en unidades de radio del planeta; `root` se escala al radio en mundo.
- * - Se coloca sobre `.hero__visual .planet-ph` a partir de `layoutState` + `scrollState.y`, así
- *   que coincide con el marcador CSS y sube con el hero. La coreografía por sección es de la Fase 4.
+ * - La pose (posición, radio, eje, anillos, giro, capas) sale de `Choreography`, la tabla por
+ *   sección. Encima se suman el giro por tiempo y el parallax del puntero.
+ * - En el panel de "Sobre" se enciende la capa de holograma (malla + escaneo con `scroll.scan`).
  * - Con reduced motion `ctx.time` está congelado: pose fija (giro, luna y polvo quietos).
  */
 
-/** Radio del cuerpo respecto al lado del marcador (`.planet-ph__body` tiene `inset: 20%`). */
-const BODY_FRACTION = 0.3;
 const ATMOSPHERE_RADIUS = 1.14;
 const BAND_INNER = 1.22;
 const BAND_OUTER = 1.5;
@@ -42,6 +44,10 @@ const MOON_ORBIT = 1.82;
 const MOON_RADIUS = 0.09;
 const SPIN_SPEED = 0.045;
 const MOON_SPEED = 0.11;
+const HOLOGRAM_RADIUS = 1.012;
+const SHADOW_OPACITY = 0.4;
+/** Margen (en radios) que ocupa el sistema completo: luna y polvo. */
+const EXTENT = 2;
 /** Desplazamiento máximo del parallax (unidades de mundo) y giro extra de los anillos (rad). */
 const PARALLAX = 0.25;
 const PARALLAX_TILT = 0.08;
@@ -55,6 +61,11 @@ export class Planet implements SceneObject {
   private readonly rings = new Group();
   private readonly moonSpin = new Group();
   private readonly dust: Dust;
+  private readonly choreography = new Choreography();
+  private readonly uShadow = { value: SHADOW_OPACITY };
+  private readonly uEnv = { value: 1 };
+  private readonly uPanel = { value: 0 };
+  private readonly uScan = { value: 0 };
 
   private readonly geometries: { dispose(): void }[] = [];
   private readonly materials: ShaderMaterial[] = [];
@@ -82,11 +93,12 @@ export class Planet implements SceneObject {
       this.material({
         vertexShader: surfaceVert,
         fragmentShader: planetFrag,
-        uniforms: { uMap: this.uMap, uLightDir: this.lightDir, uRimDir: this.rimDir },
+        uniforms: { uMap: this.uMap, uLightDir: this.lightDir, uRimDir: this.rimDir, uEnv: this.uEnv },
       }),
     );
     this.spin.rotation.z = 0.32;
     this.spin.add(this.body);
+    this.body.add(this.createHologram());
     this.root.add(this.spin);
 
     const atmosphere = new Mesh(
@@ -119,31 +131,39 @@ export class Planet implements SceneObject {
   }
 
   update(ctx: FrameContext): void {
-    const hero = ctx.layout.hero;
-    if (hero.size <= 0 || ctx.viewportHeight <= 0) {
-      this.root.visible = false;
-      return;
-    }
-
-    const worldPerPx = (2 * ctx.viewHalfHeight) / ctx.viewportHeight;
-    const radius = hero.size * BODY_FRACTION * worldPerPx;
-    const x = (hero.x - ctx.viewportWidth / 2) * worldPerPx;
-    const y = (ctx.viewportHeight / 2 - (hero.y - ctx.scroll.y)) * worldPerPx;
+    this.choreography.update(ctx);
+    const pose = this.choreography.pose;
+    const extent = pose.r * EXTENT;
+    const onScreen =
+      Math.abs(pose.x) - extent < ctx.viewHalfWidth && Math.abs(pose.y) - extent < ctx.viewHalfHeight;
+    this.root.visible = this.choreography.ready && pose.r > 1e-4 && onScreen;
+    if (!this.root.visible) return;
 
     if (ctx.pointer.enabled && !ctx.reducedMotion) {
       const damp = 1 - Math.exp(-ctx.delta * 4);
       this.parallaxX += (ctx.pointer.x - this.parallaxX) * damp;
       this.parallaxY += (ctx.pointer.y - this.parallaxY) * damp;
     }
+    // Dentro del panel el parallax se reduce para que el sistema no se salga de sus bordes.
+    const parallax = PARALLAX * (1 - 0.7 * pose.panel);
 
-    this.root.visible = y - radius * MOON_ORBIT < ctx.viewHalfHeight;
-    this.root.position.set(x + this.parallaxX * PARALLAX, y + this.parallaxY * PARALLAX, 0);
-    this.root.scale.setScalar(radius);
+    this.root.position.set(pose.x + this.parallaxX * parallax, pose.y + this.parallaxY * parallax, 0);
+    this.root.scale.setScalar(pose.r);
+    this.spin.rotation.z = pose.axis;
 
-    this.body.rotation.y = 1.1 + ctx.time * SPIN_SPEED;
-    this.rings.rotation.set(-this.parallaxY * PARALLAX_TILT, this.parallaxX * PARALLAX_TILT, 0);
+    this.body.rotation.y = 1.1 + pose.turn + ctx.time * SPIN_SPEED;
+    this.rings.rotation.set(
+      pose.ringTilt - this.parallaxY * PARALLAX_TILT,
+      this.parallaxX * PARALLAX_TILT,
+      pose.ringRoll,
+    );
     this.moonSpin.rotation.z = 2.2 + ctx.time * MOON_SPEED;
-    this.dust.update(ctx.time);
+    this.dust.update(ctx.time, pose.dust);
+
+    this.uShadow.value = SHADOW_OPACITY * pose.shadow;
+    this.uEnv.value = 1 - pose.panel;
+    this.uPanel.value = pose.panel;
+    this.uScan.value = ctx.scroll.scan;
   }
 
   onQualityChange(params: Readonly<QualityParams>): void {
@@ -172,7 +192,7 @@ export class Planet implements SceneObject {
         fragmentShader: shadowFrag,
         transparent: true,
         depthWrite: false,
-        uniforms: { uOpacity: { value: 0.4 } },
+        uniforms: { uOpacity: this.uShadow },
       }),
     );
     shadow.position.set(0.12, -0.55, -1.6);
@@ -206,6 +226,23 @@ export class Planet implements SceneObject {
     pivot.rotation.z = roll;
     pivot.add(ring);
     return pivot;
+  }
+
+  /** Cáscara apenas mayor que el cuerpo; gira con él, así la malla queda fija a la superficie. */
+  private createHologram(): Mesh {
+    const hologram = new Mesh(
+      this.track(new SphereGeometry(HOLOGRAM_RADIUS, 96, 64)),
+      this.material({
+        vertexShader: surfaceVert,
+        fragmentShader: hologramFrag,
+        transparent: true,
+        depthWrite: false,
+        blending: AdditiveBlending,
+        uniforms: { uMap: this.uMap, uScan: this.uScan, uPanel: this.uPanel },
+      }),
+    );
+    hologram.renderOrder = 5;
+    return hologram;
   }
 
   private createMoon(): Group {

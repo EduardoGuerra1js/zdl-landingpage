@@ -2,12 +2,15 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/sections.css";
 import { gsap } from "gsap";
+import { initProcessOrbit } from "./ui/process";
+import { initReveals } from "./ui/reveals";
 import { initScroll } from "./ui/scroll";
 
 /**
  * Arranque: el texto pinta sin JS de 3D. El scroll (Lenis + ScrollTrigger) se cablea de inmediato;
  * Three.js llega en un chunk aparte tras `load` y un hueco ocioso, y el canvas entra con fade.
- * Estados en <html>: `.has-webgl` (canvas activo) o `.no-webgl` (fallback estático), y
+ * Estados en <html>: `.has-webgl` (canvas activo), `.scene-ready` (terminó el fundido: la escena
+ * ya dibuja lo que sustituye al CSS, como el fondo del panel de "Sobre") o `.no-webgl`, y
  * `data-quality="high|medium|low"` con el nivel vigente (útil para recortar CSS caro en "low").
  */
 
@@ -15,6 +18,8 @@ const root = document.documentElement;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 initScroll(reducedMotion);
+initProcessOrbit(reducedMotion);
+initReveals(reducedMotion);
 afterFirstPaint(bootScene);
 
 function afterFirstPaint(callback: () => void): void {
@@ -60,13 +65,13 @@ function reveal(canvas: HTMLCanvasElement): void {
   const placeholder = document.querySelector(".hero__visual .planet-ph");
   const duration = reducedMotion ? 0 : 0.8;
   root.classList.add("has-webgl");
-  const tl = gsap.timeline();
+  const tl = gsap.timeline({ onComplete: () => root.classList.add("scene-ready") });
   tl.to(canvas, { autoAlpha: 1, duration, ease: "power1.out" }, 0);
   if (placeholder) tl.to(placeholder, { autoAlpha: 0, duration, ease: "power1.out" }, 0);
 }
 
 function useFallback(): void {
-  root.classList.remove("has-webgl");
+  root.classList.remove("has-webgl", "scene-ready");
   root.classList.add("no-webgl");
   gsap.set(".planet-ph", { clearProps: "opacity,visibility" });
   document.querySelector(".scene-canvas")?.remove();

@@ -43,7 +43,7 @@ Estados: `Pendiente` · `En curso` · `Completada`.
 | 1 | Base HTML/CSS (sin 3D) | Opus 5.5 | Completada |
 | 2 | Motor 3D y calidad adaptativa | Opus 5.5 | Completada |
 | 3 | Planeta del hero | Opus 5.5 (rescate: Opus 5 Thinking High) | Completada |
-| 4 | Coreografía del scroll | Sonnet 5.5 | Pendiente |
+| 4 | Coreografía del scroll | Sonnet 5.5 | Completada |
 | 5 | CTA y agujero negro | Opus 5.5 (rescate: Opus 5 Thinking High) | Pendiente |
 | 6 | UX/UI, microinteracciones y pulido | Sonnet 5.5 | Pendiente |
 | 7 | Auditoría de rendimiento | GPT 5.6 | Pendiente |
@@ -67,6 +67,11 @@ Decisiones transversales registradas aquí a medida que se toman:
 - **Texturas procedurales horneadas en GPU:** el relieve del planeta se genera una vez en un render target equirectangular (`textureSize × textureSize/2`) con ruido 3D. No hay WebP de textura en el bundle y el costo por frame es cero. Se rehornea solo si baja `textureSize`.
 - **GLSL:** archivos `.glsl/.vert/.frag` en `src/scene/shaders/`, importados con `?raw` de Vite (sin plugins). Los colores de los shaders son sRGB directos: los `ShaderMaterial` no incluyen conversión de espacio de color, y las constantes se escriben en GLSL para no pasar por la gestión de color de `THREE.Color`.
 - **Alinear 3D con el DOM:** `ui/scroll.ts` mide en cada `refresh` de ScrollTrigger los rectángulos que la escena necesita (`layoutState`, en px de documento) y escribe `scrollState.y`. La escena convierte px a mundo con `FrameContext.viewportWidth/Height`. Nunca mide el DOM en el bucle.
+- **Coreografía en una tabla:** todas las poses del planeta por sección están en `src/scene/choreography.ts` (`WIDE` ≥ 1152 px, `NARROW` por debajo). Se ajustan ahí, sin tocar `Planet.ts`. Mezcla lineal en espacio de scroll.
+- **Superficies oscuras en WebGL:** el panel de "Sobre" se dibuja en el canvas (`AboutBackdrop`) y su CSS se apaga con `html.scene-ready` (tras el fundido). Sin WebGL, el CSS sigue siendo el fallback.
+- **Franjas de vidrio:** pilares y áreas son translúcidas (`rgba(232,232,250,.82)` + blur 18 px) para que el planeta se intuya detrás; en calidad baja, sin blur.
+- **Animación por tiempo vs. scroll:** lo atado al scroll es lineal (planeta, órbita del proceso); los momentos que se disparan una vez (entrada del hero, revelados, escaneo AR) usan easing suave. `scrollState.scan` lo escribe `ui/reveals.ts`.
+- **Revelados:** opacidad + 12 px, una vez, sin stagger por tarjeta. Con reduced motion no hay revelados y todo aparece en su estado final.
 
 ---
 
@@ -272,9 +277,125 @@ _Alcance:_ proponer 2 variantes (obsidiana pulida vs roca lunar) y elegir; shade
 ---
 
 ### Fase 4 — Coreografía del scroll · Sonnet 5.5
-**Estado:** Pendiente
+**Estado:** Completada · 2026-10-01
 
 _Alcance:_ planeta recorre la página con scrub; holograma AR en "Sobre"; órbita SVG + satélite en "Proceso"; revelados mínimos; tabla de estados (posición, escala, rotación, inclinación) por sección.
+
+**Decisiones previas (consultadas al usuario)**
+- **Holograma con el panel dibujado en WebGL:** el fondo oscuro de `.about__panel` se pinta en el canvas (mismo rectángulo, radio, retícula y sombra que el CSS), y el CSS del panel se vuelve transparente. Así el planeta y el holograma viven "dentro" del panel sin recortes del DOM.
+- **Franjas de vidrio:** pilares y áreas pasan de `--bg-soft` opaco a vidrio translúcido, para que el planeta se intuya al cruzarlas.
+
+**Resumen de cambios**
+- `src/scene/choreography.ts` — **nuevo**. Contiene la tabla de poses ajustable y la clase `Choreography`.
+  - Cada clave (`KeySpec`) apunta a una sección (o al panel `about`) y a un progreso `t`, con la semántica de `scrollState.sections`: 0 cuando la sección entra por abajo y 1 cuando sale por arriba.
+  - La pose (`PoseSpec`) tiene: ancla, `x`/`y`, radio `r`, inclinación del eje, inclinación y alabeo de los anillos, giro acumulado, sombra, polvo y `panel`.
+  - Anclas:
+    - `hero` y `about` van pegadas al rectángulo del DOM y suben con el scroll.
+    - `view` es una posición fija en pantalla (`x`/`y` en 0..1 del viewport, `r` en fracción del lado menor).
+    - `follow: false` toma la posición del ancla en esa clave y la deja fija en pantalla. Así, en escritorio, el planeta del hero no se mete bajo el header.
+  - Entre claves la mezcla es **lineal en espacio de scroll**, sin easing (regla del scrub).
+  - Regla de radio cero: si cambia el ancla y un extremo tiene `r = 0`, el planeta crece o se encoge en el sitio del otro extremo, sin viajar.
+  - `build()` convierte las claves a px de scroll solo cuando cambian el layout o el tamaño, y las fuerza a ser monótonas y ≤ `scrollMax`. `sample()` escribe en `Float32Array` reutilizados, con cero asignaciones por frame.
+  - Con reduced motion se usa la pose de reposo (`rest`) de la sección activa.
+  - Hay dos tablas: `WIDE` desde 1152 px y `NARROW` por debajo (ver la tabla de estados).
+- `src/scene/objects/Planet.ts`
+  - Lee la pose de `Choreography` en vez de calcular su pose home: `root` (posición y escala), `spin.rotation.z` (eje), `body.rotation.y` (giro acumulado más el giro continuo) y `rings.rotation` (inclinación y alabeo más el parallax).
+  - Visible solo si la pose está lista, `r > 0` y está en pantalla.
+  - El parallax baja un 70 % dentro del panel.
+  - Uniforms nuevos: `uShadow` (sombra por sección), `uEnv` (apaga el reflejo del papel dentro del panel oscuro), `uPanel` y `uScan` (holograma).
+  - `createHologram()` crea una esfera hija del cuerpo, de radio 1.012, con blending aditivo (aquí luce porque está sobre el panel oscuro) y `depthWrite: false`.
+- `src/scene/objects/AboutBackdrop.ts` + `src/scene/shaders/panel.frag` — **nuevo**. Dibuja el fondo del panel de "Sobre" en el canvas:
+  - un plano a z = −6, escalado por perspectiva para medir lo mismo que el rectángulo del DOM;
+  - SDF de rectángulo redondeado (radio 32 px), retícula de 40 px y sombra exterior suave;
+  - `renderOrder −1`; el cuerpo opaco del planeta lo tapa por profundidad.
+  
+  Se registra antes de `Planet` en `src/scene/index.ts`.
+- `src/scene/shaders/hologram.frag` — **nuevo**. Malla de meridianos y paralelos (24×12, con `fwidth`) más curvas de nivel sacadas de la máscara de vetas de `uMap.a`; no carga texturas nuevas.
+  - Una línea de escaneo baja de polo a polo con `uScan`: la malla aparece detrás de la línea con un brillo extra que se asienta al terminar.
+  - Color `--dark-accent` (`#A5A5FF`); se descarta si `uPanel` o `uScan` son ~0.
+- `src/scene/shaders/planet.frag` — el reflejo del papel se multiplica por `uEnv`.
+- `src/scene/objects/Dust.ts` — `uOpacity` por sección (`update(time, fade)`).
+- `src/scene/SceneManager.ts` — exporta `CAMERA_Z` (lo usa `AboutBackdrop` para la escala por profundidad).
+- `src/scene/LayoutState.ts` — `layoutState` ahora tiene `hero` y `about` (`Rect` con `width`/`height`), `sections[id]` (`top` y `height`), `viewportHeight` y `scrollMax`.
+- `src/scene/ScrollState.ts` — nuevo campo `scan` (0..1, progreso del escaneo AR). Lo escribe `ui/reveals.ts`; el contrato queda documentado.
+- `src/ui/scroll.ts`
+  - `measure()` rellena los campos nuevos de `layoutState`.
+  - **`refreshOnReflow()` (bug latente de la Fase 2):** un `ResizeObserver` sobre `body` llama a `ScrollTrigger.refresh()` (como mucho una vez por frame) cuando cambia la altura del documento o el ancho del cliente. También refresca en `document.fonts.ready`. Antes, si la página cambiaba de alto sin cambiar el viewport (fuentes, reflujo), las posiciones de ScrollTrigger y de `layoutState` quedaban viejas, y el planeta se desalineaba del panel.
+- `src/ui/reveals.ts` — **nuevo**.
+  - Una sola secuencia de entrada del hero (eyebrow, `h1`, subtítulo y botones): opacidad 0.01 → 1 y 12 px, 0.7 s, desfase 0.09 s.
+  - Revelados mínimos de bloque (`[data-reveal]`: opacidad + 12 px, 0.6 s, una vez, **sin stagger por tarjeta**); se omiten los que ya están en pantalla al cargar.
+  - El escaneo AR (`scrollState.scan` 0 → 1 en 2.4 s, una vez, cuando el panel cruza el 62 % del viewport).
+- `src/ui/process.ts` — **nuevo**. Órbita SVG del proceso:
+  - En cada `refresh` mide los centros de los 4 índices y arma una curva cuadrática por tramo: arco hacia arriba en fila (escritorio) y hacia la izquierda en columna (móvil).
+  - Calcula la longitud acumulada hasta cada paso.
+  - Un ScrollTrigger lineal (scrub) dibuja el trazo (`stroke-dashoffset`) y mueve el satélite con `getPointAtLength`, sin MotionPathPlugin.
+  - Cada paso alcanzado recibe `.is-reached`; la clase solo se toca cuando cambia el conteo.
+  - Con reduced motion, la órbita aparece completa.
+- `src/main.ts` — llama a `initProcessOrbit` e `initReveals`. Al terminar el fundido del canvas añade `.scene-ready`; el fallback la quita.
+- `index.html`
+  - Script en línea que añade `.js` a `<html>`.
+  - Atributos `data-hero-reveal` y `data-reveal`.
+  - `.process__track` envuelve el `<ol>` del proceso y el nuevo `<svg class="process__orbit">` (trazo guía, trazo recorrido y satélite).
+- `src/styles/sections.css`
+  - `.scene-ready .about__panel` sin fondo ni sombra, y el marcador `.planet-ph--panel` oculto.
+  - Franjas de vidrio: `rgba(232,232,250,.82)` + `blur(18px)`, contraste ≥ 4.7:1 en el peor caso; en `data-quality="low"`, sin blur y con alfa 0.95.
+  - Estilos de la órbita y de `.is-reached`.
+  - Se quitó la línea guía `.process__steps::before`.
+- `src/styles/base.css` — estado inicial del hero (`.js [data-hero-reveal]`, opacidad 0.01) con una animación CSS de respaldo a los 3 s, por si el JS no llega. Solo aplica con `prefers-reduced-motion: no-preference`.
+
+**Tabla de estados**
+
+Escritorio ancho (≥ 1152 px). `x`/`y` en fracción del viewport y `r` en fracción del lado menor; los ángulos en radianes. Las claves están en el progreso de la sección indicado.
+
+| Sección (clave) | Ancla / posición | Escala `r` | Eje | Anillos (incl. / alabeo) | Giro | Sombra / polvo | Momento |
+|---|---|---|---|---|---|---|---|
+| Hero (inicio) | marcador del hero, fijo en pantalla | 1 (marcador) | 0.32 | 0 / 0 | 0 | 1 / 1 | entrada orquestada |
+| Qué hacemos (0.5) | view 0.55, 0.30 | 0.55 | 0.45 | 0.25 / 0 | 0.8 | 0.6 / 0.6 | se desplaza y reduce, parallax |
+| Sobre (0.4 → 0.62) | dentro del panel | 1 (panel) | 0.20 | −0.10 / 0 | 1.6 → 1.9 | 0 / 0.7 | holograma + escaneo |
+| Proceso (0.5) | view 0.62, 0.42 | 0.40 | 0.50 | 0.35 / −0.10 | 2.4 | 0.5 / 0.5 | órbita SVG + satélite |
+| Proyectos (0.5) | view 0.60, 0.45 | 0.45 | 0.25 | 0.05 / 0.08 | 3.0 | 0.5 / 0.5 | (tilt de tarjetas: Fase 6) |
+| Áreas (0.5) | view 0.62, 0.68 | 0.32 | 0.40 | 0.30 / 0 | 3.4 | 0.4 / 0.4 | discreto, tras el vidrio |
+| Blog (0.5) | view 0.60, 0.42 | 0.45 | 0.35 | 0.15 / 0 | 3.8 | 0.5 / 0.5 | discreto |
+| Contacto (0.3) | igual que blog | 0.45 | 0.35 | 0.15 / 0 | 4.0 | 0.5 / 0.5 | punto de partida del colapso (Fase 5) |
+
+Estrecho (< 1152 px: móvil, tablet y escritorio estrecho, donde las rejillas ocupan todo el ancho):
+1. El planeta nace en el marcador del hero (`r` 1) y, pegado a él, se encoge hasta 0 en el 70 % del hero.
+2. Desaparece hasta "Sobre": crece dentro del panel entre el 12 % y el 35 %, se queda allí hasta el 65 % y se encoge al 88 %.
+3. En el resto de secciones queda en `r` 0 (sin sombra ni polvo) y el giro sigue acumulándose: 0.8, 1.2, 2.4, 3, 3.4, 3.8 y 4.
+
+**Verificación**
+- `npm run build` sin errores (incluye `tsc --noEmit`) y sin errores de lint del IDE en `src/` ni `index.html`. Peso gzip: **JS inicial 52.4 KB** (antes 51.2; reveals y órbita), CSS 5.0 KB, chunk `scene` **141.5 KB** (antes 138.2; coreografía, panel y holograma).
+- FPS en escritorio (1660×916, DPR 1), recorriendo toda la página: **`?quality=medio` 60 FPS (p95 16.8 ms)** y **60 FPS también con CPU 4× más lenta**.
+- Revisión visual:
+  - 1660×916: hero, pilares de vidrio, "Qué hacemos" (planeta en el margen derecho), panel de "Sobre" (el fondo WebGL coincide con el CSS) con el escaneo a medio camino y al terminar, órbita del proceso con el satélite, proyectos, áreas y blog.
+  - 1024×768: tabla estrecha; el planeta se encoge con el hero y crece en el panel.
+  - 360×780 (táctil, nivel medio): hero, panel y órbita vertical.
+- Reduced motion: `h1` con opacidad 1, ningún bloque oculto, los 4 pasos alcanzados y el planeta en su pose del panel. Esto llevó a encontrar el bug de `refreshOnReflow`.
+- Sin WebGL (simulado): el panel vuelve a su fondo CSS, con retícula y marcador; el hero muestra `planet.webp`.
+- **No verificado:** el parallax con un ratón real, un móvil real y el LCP medido con Lighthouse (el hero arranca a opacidad 0.01).
+
+**Desviaciones del plan**
+- **El planeta no pasa por detrás de las tarjetas.** En proyectos y blog, el planeta desenfocado tras el vidrio quedaba como una mancha gris bajo el texto, así que en cada sección vive en el margen superior derecho, junto al encabezado. Solo cruza tarjetas en las transiciones entre secciones.
+- **Por debajo de 1152 px el planeta solo aparece en el hero y en el panel.** No hay margen libre cuando las rejillas ocupan todo el ancho; a 1024 px la rejilla 2×2 de "Qué hacemos" quedaba bajo el planeta. El umbral coincide con el `72rem` de `.cards-grid--4`.
+- **Clase nueva `.scene-ready`** en `<html>` (tras el fundido del canvas): el CSS del panel se apaga solo cuando el fondo WebGL ya se ve, sin parpadeo.
+- **Arreglo en `ui/scroll.ts` (Fase 2):** `refreshOnReflow`, necesario para que la coreografía no se desalineara. No se reabrió la fase; es un arreglo de un bug que bloqueaba esta.
+- **El hero arranca a opacidad 0.01, no 0,** para que el navegador cuente el `h1` como candidato a LCP desde el primer pintado. Tiene un respaldo CSS a los 3 s.
+- **Marcado del proceso:** el `<ol>` va dentro de `.process__track`, junto al SVG. Sin JS no hay línea guía (antes la dibujaba el CSS); los pasos siguen numerados.
+- **Escaneo AR por tiempo, no por scroll:** dura 2.4 s y se dispara una vez al llegar al panel. Un escaneo atado al scroll se veía a tirones al parar.
+
+**Handoff a la Fase 5**
+- Le toca: la transición claro → oscuro, el colapso del planeta, las estrellas y el agujero negro con disco y lente en la isla final.
+- Quedó listo:
+  - **Pose de partida:** la última clave (`contacto`, t 0.3) deja el planeta en view 0.60, 0.42, con `r` 0.45 en ancho; en estrecho está oculto (`r` 0). El colapso puede añadirse como claves nuevas al final de `WIDE`/`NARROW` en `choreography.ts`, por ejemplo `r` → 0 con el ancla `view`, o leerse aparte con `scrollState.sections.contacto`.
+  - `Planet` expone por uniform la opacidad de la atmósfera, los anillos, la sombra (`uShadow`) y el polvo (`Dust.update(time, fade)`); `root.scale` es el radio en mundo.
+  - **`AboutBackdrop` es el patrón para dibujar en WebGL superficies oscuras que coinciden con el DOM** (plano a profundidad fija escalado con `CAMERA_Z`, SDF de rectángulo redondeado). Sirve para la isla oscura si conviene que el oscurecimiento viva en el canvas.
+  - `layoutState.sections.contacto` (`top`, `height`) y `layoutState.scrollMax` ya se miden.
+- Pendientes / riesgos:
+  - `.dark-island` sigue opaca (`--space`) y tapa el canvas: hay que volverla transparente (con un patrón tipo `.scene-ready`) cuando el fondo WebGL oscurezca.
+  - El holograma usa blending aditivo dentro del panel; el agujero negro puede reutilizar el mismo criterio sobre la isla oscura.
+- Para fases posteriores (anotado, no implementado):
+  - **Fase 6:** transición de `.process-step.is-reached` (hoy instantánea); tilt de tarjetas de proyectos (la pose de proyectos deja libre el área de las tarjetas); anclas con `lenis.scrollTo`; revisar que la secuencia del hero no retrase el LCP. Si se cambian alturas de sección, `refreshOnReflow` ya re-mide solo.
+  - **Fase 7:** costo de `backdrop-filter` en las franjas de vidrio con el canvas animado detrás (en nivel bajo ya se quita el blur); costo de `ScrollTrigger.refresh()` al reflujar (como mucho uno por frame); LCP con el hero a opacidad 0.01.
 
 ---
 
