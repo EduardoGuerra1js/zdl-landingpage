@@ -1,0 +1,397 @@
+/* Reset, tipografía base y componentes reutilizables. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--nav-h) + var(--space-4));
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+  -webkit-tap-highlight-color: rgba(91, 91, 240, 0.12);
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+figure,
+blockquote {
+  margin: 0;
+}
+
+ul[role="list"],
+ol[role="list"] {
+  list-style: none;
+  padding: 0;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: var(--lh-heading);
+  letter-spacing: var(--tracking-heading);
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 6px;
+}
+
+.on-dark :focus-visible {
+  box-shadow: 0 0 0 3px var(--space), 0 0 0 5px var(--dark-accent);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 100;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: var(--radius-btn);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* ---------- Layout ---------- */
+
+.container {
+  width: 100%;
+  max-width: calc(var(--container) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: max(var(--gutter), env(safe-area-inset-left)) max(var(--gutter), env(safe-area-inset-right));
+}
+
+.section {
+  padding-block: var(--section-y);
+}
+
+/* ---------- Tipografía utilitaria ---------- */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+
+.eyebrow::before {
+  content: "";
+  width: 1.5rem;
+  height: 1px;
+  background: currentColor;
+}
+
+.on-dark .eyebrow {
+  color: var(--dark-accent);
+}
+
+.lead {
+  font-size: var(--fs-lead);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: var(--measure);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Encabezado de sección: eyebrow + h2 + lead */
+.section-head {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 44rem;
+  margin-bottom: clamp(var(--space-7), 2rem + 3vw, var(--space-8));
+}
+
+.section-head h2 {
+  font-size: var(--fs-h2);
+}
+
+/* ---------- Botones ---------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 3rem;
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btn svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 8px 24px -10px rgba(91, 91, 240, 0.7);
+}
+
+.btn--primary:hover {
+  background: var(--accent-ink);
+}
+
+.btn--secondary {
+  background: var(--glass-bg);
+  color: var(--ink);
+  border-color: var(--line-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.btn--secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.on-dark .btn--secondary {
+  background: rgba(247, 246, 252, 0.06);
+  color: var(--dark-ink);
+  border-color: var(--dark-line);
+}
+
+.on-dark .btn--secondary:hover {
+  border-color: var(--dark-accent);
+  color: var(--dark-ink);
+}
+
+.btn--sm {
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  font-size: var(--fs-small);
+}
+
+.btn:focus-visible {
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-btn);
+}
+
+.on-dark .btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--space), 0 0 0 5px var(--dark-accent);
+}
+
+/* ---------- Tarjeta de vidrio ---------- */
+
+.glass-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: clamp(var(--space-5), 1.25rem + 0.75vw, var(--space-6));
+  background: var(--glass-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-1);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+.glass-card h3 {
+  font-size: var(--fs-h3);
+  hyphens: auto;
+}
+
+.glass-card p {
+  color: var(--muted);
+}
+
+.icon-tile {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.icon-tile svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+/* ---------- Chip ---------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-chip);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.chip--outline {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  font-size: 0.9375rem;
+}
+
+.chip--outline::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ---------- Métrica ---------- */
+
+.metric {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.metric__value {
+  font-family: var(--font-ui);
+  font-size: var(--fs-metric);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.metric__label {
+  font-size: var(--fs-small);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ---------- Paso de proceso ---------- */
+
+.process-step {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+.process-step__index {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+
+.process-step h3 {
+  font-size: var(--fs-h3);
+}
+
+.process-step p {
+  color: var(--muted);
+}
+
+.process-step__time {
+  color: var(--accent-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

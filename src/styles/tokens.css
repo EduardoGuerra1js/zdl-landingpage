@@ -1,0 +1,110 @@
+/* Tokens de diseño. Color: manual de marca v1.0 (ver .cursor/rules/project.mdc). */
+
+@font-face {
+  font-family: "Manrope";
+  src: url("/fonts/manrope-latin-wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* Color — claro (principal) */
+  --bg: #f7f6fc;
+  --bg-soft: #e8e8fa;
+  --surface: #ffffff;
+  --ink: #14163a;
+  --muted: #4a4c6e;
+  --accent: #5b5bf0;
+  --accent-ink: #3f3fc9;
+  --accent-soft: #ede9ff;
+  --space: #07061a;
+  --on-accent: #ffffff;
+
+  /* Color — islas oscuras (--space). Todos pasan AA sobre #07061A. */
+  --dark-ink: #f7f6fc;
+  --dark-muted: #b9b9e3;
+  --dark-accent: #a5a5ff;
+  --dark-line: rgba(165, 165, 255, 0.18);
+
+  /* Líneas y vidrio */
+  --line: rgba(91, 91, 240, 0.14);
+  --line-strong: rgba(91, 91, 240, 0.32);
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-blur: 14px;
+
+  /* Tipografía */
+  --font-display: "Manrope", "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-ui: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* Escala fluida 360 → 1440 px */
+  --fs-display: clamp(2.5rem, 1.75rem + 3.33vw, 4.75rem);
+  --fs-h2: clamp(2rem, 1.583rem + 1.85vw, 3.25rem);
+  --fs-h3: clamp(1.25rem, 1.167rem + 0.37vw, 1.5rem);
+  --fs-lead: clamp(1.125rem, 1.083rem + 0.19vw, 1.25rem);
+  --fs-body: clamp(1rem, 0.979rem + 0.09vw, 1.0625rem);
+  --fs-small: 0.875rem;
+  --fs-label: 0.75rem;
+  --fs-metric: clamp(2.25rem, 1.833rem + 1.85vw, 3.5rem);
+
+  --lh-tight: 1.05;
+  --lh-heading: 1.15;
+  --lh-body: 1.6;
+
+  --tracking-display: -0.035em;
+  --tracking-heading: -0.025em;
+  --tracking-label: 0.08em;
+
+  --measure: 62ch;
+
+  /* Espaciado (base 4 px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+  --space-10: 8rem;
+  --section-y: clamp(4.5rem, 3.25rem + 5.56vw, 10rem);
+  --gutter: clamp(1.25rem, 0.75rem + 2.22vw, 3rem);
+  --container: 75rem;
+
+  /* Radios por jerarquía */
+  --radius-chip: 999px;
+  --radius-btn: 12px;
+  --radius-card: 20px;
+  --radius-panel: 32px;
+
+  /* Sombras tintadas de índigo */
+  --shadow-1: 0 1px 2px rgba(20, 22, 58, 0.06), 0 4px 16px -4px rgba(20, 22, 58, 0.08);
+  --shadow-2: 0 2px 4px rgba(20, 22, 58, 0.06), 0 18px 40px -12px rgba(20, 22, 58, 0.18);
+
+  /* Foco */
+  --focus-ring: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent-ink);
+
+  /* Altura del nav (usada por scroll-padding y el hero) */
+  --nav-h: 3.5rem;
+
+  /* Movimiento (Fase 6 usará estas duraciones) */
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --nav-h: 4.25rem;
+  }
+}

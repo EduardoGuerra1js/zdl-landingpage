@@ -1,0 +1,122 @@
+---
+description: Contexto general de la landing de Zero Day Labs (marca, stack, arquitectura, rendimiento, protocolo de fases)
+alwaysApply: true
+---
+
+# Zero Day Labs — Contexto del proyecto
+
+## Protocolo de trabajo por fases (OBLIGATORIO)
+
+El proyecto se construye por fases (0 a 7). El registro vive en [PHASES.md](../../PHASES.md).
+
+1. **Al empezar una fase:** lee `PHASES.md` completo, en especial el "Handoff" de la fase anterior. No reabras fases cerradas salvo para corregir un bug.
+2. **Al terminar una fase:** actualiza `PHASES.md` con (a) estado, (b) resumen de los cambios hechos (archivos creados/modificados y decisiones), (c) desviaciones respecto al plan y (d) **qué le toca avanzar a la siguiente fase**.
+3. Una fase no se considera cerrada hasta que su entrada en `PHASES.md` está completa.
+4. Haz solo lo de la fase en curso. Si detectas trabajo de otra fase, anótalo en su "Handoff", no lo implementes.
+
+## Qué es
+
+Landing page **one page** de **Zero Day Labs**, un estudio independiente de investigación y desarrollo de tecnología. El contenido gira en torno a **realidad aumentada (AR) y 3D**: prototipos, entornos 3D, gemelos digitales, interfaces espaciales y experimentación en el mundo real. Idioma: español. Tono: curioso, claro, ambicioso, sin jerga vacía.
+
+## Referencias
+
+- Marca: carpeta `Zero Day Labs - Marca/` (manual + SVG). Los SVG ya copiados a `public/brand/` son los que usa el sitio.
+- Prototipo funcional de referencia: `zero-day-labs-prototype-reference.html` (Three.js r128 + GSAP, monolítico). Es **boceto**, no resultado final: reescribirlo con mejor arquitectura y calidad visual. No es fuente de verdad de color ni tipografía.
+- Prompts maestros por fase: `zero-day-labs-cursor-prompts.md`.
+- No hay mockups PNG en el repo. Se trabaja con marca + prompts + prototipo.
+
+## Secciones (en orden)
+
+1. Hero: eyebrow, titular "Diseñamos el futuro desde el laboratorio.", subtítulo, dos botones, planeta 3D.
+2. Franja de 4 pilares (investigación aplicada, prototipos funcionales, equipos multidisciplinarios, impacto sostenible).
+3. Qué hacemos: 4 tarjetas.
+4. Sobre Zero Day Labs: texto, 3 métricas (12+ proyectos, 6 áreas, 24/7), panel oscuro con planeta.
+5. Proceso: Explorar, Diseñar, Construir, Lanzar (secuencia real).
+6. Proyectos destacados: 3 tarjetas (Interfaces del futuro, Sistemas orbitales, Hábitats modulares).
+7. Áreas que exploramos: 8 chips (IA, robótica, hardware embebido, computación espacial, datos, interfaces, energía, biotecnología).
+8. Blog: 3 tarjetas (copy placeholder específico de AR/3D).
+9. CTA final oscuro con agujero negro + footer. Contacto: `mailto:hola@zerodaylabs.com`, sin formulario en v1.
+
+## Marca y diseño (modo claro es el principal)
+
+Todo se diseña y valida **primero en claro**. Modo oscuro solo vía `prefers-color-scheme`, al final y opcional. Los colores salen del manual de marca (v1.0), no de los prompts genéricos.
+
+```css
+--bg: #F7F6FC;          /* papel, lavanda casi blanca */
+--bg-soft: #E8E8FA;     /* Lavanda niebla (marca) */
+--ink: #14163A;         /* Índigo noche (marca) */
+--muted: #4A4C6E;       /* texto secundario del manual */
+--accent: #5B5BF0;      /* Índigo eléctrico (marca) */
+--accent-ink: #3F3FC9;  /* acento para texto pequeño (color de enlace del manual) */
+--accent-soft: #EDE9FF; /* fondos tenues de chips/tags */
+--space: #07061A;       /* islas oscuras y veil del CTA */
+```
+
+- **Contraste:** `--accent` sobre `--bg` da ~4.7:1 (pasa AA); sobre `--bg-soft` da ~4:1 (NO pasa para texto pequeño). Para texto pequeño de acento usar `--accent-ink`, o `--ink`.
+- **Tipografía (híbrido):** display (titulares) en **Manrope o Sora** (elegir una en la Fase 1 y registrarla en `PHASES.md`); **Inter** (400–600) en UI pequeña: nav, chips, labels, footer, métricas; mono solo para datos. Titulares con tracking negativo, líneas de menos de 70 caracteres. Fuentes autoalojadas (no depender de Google Fonts en runtime), con `font-display: swap`.
+- **Logo:** nav sobre claro usa `public/brand/logo-horizontal_color-fondo-claro.svg`; CTA/footer oscuro usa `logo-horizontal_color-fondo-oscuro.svg`. Favicon: isotipo. Variante `_color-fondo-claro` para fondos claros, `_color-fondo-oscuro` para índigo noche; `_negro`/`_blanco` solo a una tinta. No deformar ni recolorear el logo.
+- **Estructura visual:** tarjetas de vidrio sutil (blur + borde índigo tenue), radios coherentes por jerarquía, mucho aire, contraste AA mínimo.
+- **Evita:** gradientes decorativos genéricos, animaciones de entrada idénticas en cada tarjeta, brillos aditivos sobre fondo claro (se pierden).
+
+## Fondo 3D "WOW"
+
+Un solo **canvas WebGL fijo** detrás del contenido. El planeta es un objeto oscuro premium sobre papel claro: estilo **obsidiana pulida**, rim light índigo `#5B5BF0`, atmósfera con fresnel en blending **normal** (no aditivo), sombra suave. El agujero negro vive en la **isla oscura final**, donde el blending aditivo sí luce. La transición claro a oscuro es el gran momento de la página.
+
+### Coreografía del scroll (un momento memorable por sección, el resto discreto)
+
+- Hero: planeta grande a la derecha, anillos orbitales, polvo de partículas muy leve.
+- Qué hacemos: el planeta se desplaza y se reduce, parallax en capas.
+- Sobre: capa holograma AR (malla wireframe + línea de escaneo) que recorre el planeta una vez.
+- Proceso: órbita SVG que se dibuja con el scroll y un satélite que la recorre, sincronizado con los 4 pasos.
+- Proyectos: inclinación 3D sutil de tarjetas con el puntero (solo dispositivos con hover) y luz que sigue al cursor.
+- CTA: el planeta colapsa, el fondo se oscurece, aparecen estrellas y un agujero negro con lente gravitacional.
+
+## Stack (cerrado)
+
+**Vite + TypeScript vanilla** (sin framework de UI), **Three.js**, **GSAP + ScrollTrigger**, **Lenis**. Shaders propios en GLSL (planeta, atmósfera, disco, lente). Todas las animaciones y microinteracciones usan GSAP; **no añadir anime.js, Motion ni React/R3F** sin justificar el peso en bundle y aprobarlo.
+
+## Arquitectura
+
+```
+src/
+  main.ts
+  styles/            tokens.css, base.css, sections.css
+  ui/                nav, reveals, microinteractions
+  scene/
+    SceneManager.ts  un canvas, renderer alpha, ResizeObserver, pausa por visibilidad
+    QualityManager.ts niveles alto/medio/bajo, baja si FPS promedio < 50
+    ScrollState.ts   progreso por sección (0..1); GSAP/Lenis ESCRIBEN, la escena solo LEE
+    objects/         Planet.ts, BlackHole.ts, Particles.ts
+    shaders/         *.glsl
+public/brand/        SVG de marca
+public/fallback/     planet.webp (fallback sin WebGL)
+```
+
+Contrato: la escena **nunca** consulta el DOM en el frame loop; solo `ScrollState` + puntero + tiempo.
+
+## Reglas de rendimiento (obligatorias, móvil primero)
+
+- Un único renderer y un único canvas; `devicePixelRatio` máx. 2 en escritorio y 1.5 en móvil.
+- Calidad adaptativa (alto/medio/bajo): mide FPS en los primeros segundos y baja partículas, resolución y efectos si el promedio cae de 50 FPS.
+- Partículas animadas **en la GPU** (vertex shader con uniforms de tiempo/progreso); sin actualizar buffers desde JS por frame.
+- Cero asignaciones dentro del bucle de render; reutiliza vectores y objetos.
+- Pausar el render con la pestaña oculta y cuando el elemento que lo necesita no está en pantalla.
+- Sin postprocesado pesado en móvil (bloom solo escritorio y de baja resolución).
+- Texturas WebP/KTX2, máx. 1024 en móvil. Carga diferida del 3D tras el primer pintado: el texto debe aparecer sin esperar a WebGL.
+- `prefers-reduced-motion`: sin movimiento continuo, solo estado estático por sección.
+- Fallback sin WebGL: imagen estática del planeta con CSS.
+- Metas: Lighthouse móvil 90+, LCP < 2.5 s, CLS cercano a 0, bundle JS inicial < 150 KB gzip (sin contar Three.js diferido).
+- Partículas del agujero negro: 9000 (alto), 4000 (medio), 1500 (bajo).
+
+## Animación y microinteracciones
+
+- Una sola secuencia orquestada al cargar el hero; revelados mínimos (opacidad + 12 px) en el resto. Nada de stagger en cada tarjeta.
+- Ease lineal para todo lo atado al scroll; easing suave solo para respuestas a acciones del usuario.
+- Botones con feedback de presión, enlaces con subrayado animado, tarjetas con elevación y borde luminoso en hover/foco, contadores de métricas que se animan una vez, cursor magnético solo en el botón principal de escritorio. Solo `transform`/`opacity`, 150–300 ms. Foco visible siempre.
+
+## Convenciones de código
+
+- TypeScript estricto, sin `any`. HTML semántico en español (`lang="es"`), un `h1`, landmarks, `aria` solo donde haga falta.
+- Responsive de 360 px a 1440 px. Tipografía fluida con `clamp`.
+- Comentarios breves solo para contratos de módulo o decisiones no obvias.
+- Si propones una librería nueva, justifica el peso que agrega al bundle.
