@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- Genera public/fallback/planet.webp (ver scripts/make-fallback.mjs). Misma composición que .planet-ph. -->
+<html>
+  <body>
+    <pre id="out"></pre>
+    <script>
+      const S = 640;
+      const c = S / 2;
+      const r = S * 0.3;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = S;
+      const g = canvas.getContext("2d");
+
+      const ring = (frontOnly) => {
+        g.save();
+        g.translate(c, c);
+        g.rotate((-16 * Math.PI) / 180);
+        if (frontOnly) {
+          g.beginPath();
+          g.rect(-S, 0, S * 2, S);
+          g.clip();
+        }
+        g.beginPath();
+        g.ellipse(0, 0, S * 0.48, S * 0.13, 0, 0, Math.PI * 2);
+        g.lineWidth = 2;
+        g.strokeStyle = "rgba(91, 91, 240, 0.6)";
+        g.stroke();
+        g.restore();
+      };
+
+      ring(false);
+
+      const body = g.createRadialGradient(c - r * 0.32, c - r * 0.4, 0, c - r * 0.32, c - r * 0.4, r * 1.92);
+      body.addColorStop(0, "#34367a");
+      body.addColorStop(0.24, "#1a1c4c");
+      body.addColorStop(0.58, "#0c0b26");
+      body.addColorStop(0.82, "#07061a");
+      g.save();
+      g.shadowColor = "rgba(20, 22, 58, 0.45)";
+      g.shadowBlur = 56;
+      g.shadowOffsetY = 38;
+      g.beginPath();
+      g.arc(c, c, r, 0, Math.PI * 2);
+      g.fillStyle = body;
+      g.fill();
+      g.restore();
+
+      g.save();
+      g.beginPath();
+      g.arc(c, c, r, 0, Math.PI * 2);
+      g.clip();
+      const rim = g.createRadialGradient(c - r * 0.1, c - r * 0.06, r * 0.9, c - r * 0.1, c - r * 0.06, r * 1.04);
+      rim.addColorStop(0, "rgba(91, 91, 240, 0)");
+      rim.addColorStop(1, "rgba(91, 91, 240, 0.6)");
+      g.fillStyle = rim;
+      g.fillRect(0, 0, S, S);
+      g.restore();
+
+      ring(true);
+
+      document.getElementById("out").textContent = canvas.toDataURL("image/webp", 0.8);
+    </script>
+  </body>
+</html>

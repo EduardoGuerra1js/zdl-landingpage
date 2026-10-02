@@ -16,7 +16,10 @@ npm run dev        # servidor de desarrollo
 npm run build      # typecheck (tsc) + build de producción
 npm run preview    # previsualizar el build
 npm run typecheck  # solo TypeScript
+npm run fallback   # regenera public/fallback/planet.webp con Edge/Chrome headless
 ```
+
+Para pruebas: `?quality=alto|medio|bajo` fija el nivel de calidad del 3D. El nivel vigente se ve en `<html data-quality>`.
 
 ## Estructura
 
@@ -24,8 +27,9 @@ npm run typecheck  # solo TypeScript
 src/
   main.ts
   styles/       tokens, base, secciones
-  ui/           nav, reveals, microinteracciones
-  scene/        SceneManager, QualityManager, ScrollState, objects/, shaders/
+  ui/           scroll (Lenis + ScrollTrigger); luego nav, reveals, microinteracciones
+  scene/        SceneManager, QualityManager, ScrollState, PointerState, objects/, shaders/
+scripts/        generador del fallback del planeta
 public/
   brand/        SVG de marca (logo, isotipo, logotipo), sin metadatos C2PA
   fonts/        Manrope e Inter variables, subconjunto latino (woff2 autoalojado)

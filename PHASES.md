@@ -41,7 +41,7 @@ Estados: `Pendiente` · `En curso` · `Completada`.
 |------|--------|--------|--------|
 | 0 | Contexto | Sonnet 5.5 | Completada |
 | 1 | Base HTML/CSS (sin 3D) | Opus 5.5 | Completada |
-| 2 | Motor 3D y calidad adaptativa | Opus 5.5 | Pendiente |
+| 2 | Motor 3D y calidad adaptativa | Opus 5.5 | Completada |
 | 3 | Planeta del hero | Opus 5.5 (rescate: Opus 5 Thinking High) | Pendiente |
 | 4 | Coreografía del scroll | Sonnet 5.5 | Pendiente |
 | 5 | CTA y agujero negro | Opus 5.5 (rescate: Opus 5 Thinking High) | Pendiente |
@@ -59,6 +59,10 @@ Decisiones transversales registradas aquí a medida que se toman:
 - **Logo en el sitio:** en línea como `<symbol id="zdl-mark">` + `<text>` con Inter autoalojada, porque los SVG de marca tienen el texto como texto editable y dentro de `<img>` no usarían la fuente de la página. Color por variables `--logo-ink`/`--logo-accent` (clases `.logo--light` y `.logo--dark`); la geometría no se toca.
 - **Tokens extra para islas oscuras:** `--dark-ink #F7F6FC` (18.6:1), `--dark-muted #B9B9E3` (10.6:1), `--dark-accent #A5A5FF` (9:1) sobre `--space`. `--accent` sobre `--space` da solo ~4:1, así que no se usa para texto pequeño en oscuro.
 - **Microinteracciones:** las transiciones quedan para la Fase 6; en la Fase 1 los estados hover son cambios instantáneos de color.
+- **Carga del 3D:** `main.ts` (bundle inicial: CSS + GSAP + ScrollTrigger + Lenis, ~51 KB gzip) y `import("./scene")` tras `load` + `requestIdleCallback`. Three.js y todo `src/scene/` salvo `ScrollState`/`PointerState` viven en el chunk diferido `scene-*.js`.
+- **Estados en `<html>`:** `.has-webgl` (canvas activo), `.no-webgl` (fallback) y `data-quality="high|medium|low"`. Son el punto de enganche del CSS que dependa del 3D.
+- **Un solo rAF por subsistema:** Lenis avanza en `gsap.ticker`; la escena tiene su propio rAF en `SceneManager` (no depende de GSAP).
+- **Reduced motion:** sin Lenis (scroll nativo) y la escena con tiempo congelado, renderizando solo al cambiar sección activa, tamaño o calidad. Se lee una vez al cargar.
 
 ---
 
@@ -147,9 +151,60 @@ _Alcance:_ scaffold Vite + TS; tokens; 9 secciones con contenido real; component
 ---
 
 ### Fase 2 — Motor 3D y calidad adaptativa · Opus 5.5
-**Estado:** Pendiente
+**Estado:** Completada · 2026-10-01
 
 _Alcance:_ `SceneManager`, `QualityManager`, `ScrollState`, cableado Lenis + GSAP, cubo de prueba que reacciona al scroll, init diferido tras primer pintado con fade-in, fallback sin WebGL, `prefers-reduced-motion`.
+
+**Resumen de cambios**
+- `src/scene/ScrollState.ts` — objeto único `scrollState` con `page` (0..1), `sections[id]` (0..1 por sección), `active` (índice en `SECTION_IDS`), `velocity` (px/frame de Lenis) y `version` (se incrementa en cada escritura). Se muta en sitio. No importa Three.js, así que vive en el bundle inicial.
+- `src/ui/scroll.ts` — **único escritor** de `scrollState`. Lenis (`autoRaf: false`) avanza en `gsap.ticker` y llama a `ScrollTrigger.update`. Crea un ScrollTrigger global, uno por sección para el progreso (`top bottom` → `bottom top`, también en `onRefresh` para fijar 0/1 al cargar) y otro por sección para `active` (`top center` → `bottom center`). Importa `lenis/dist/lenis.css`.
+- `src/scene/PointerState.ts` — `pointerState` (-1..1, y hacia arriba) con un listener pasivo, activo solo con `(hover: hover) and (pointer: fine)`; en táctil `enabled` es `false`.
+- `src/scene/QualityManager.ts` — niveles `high/medium/low` con `pixelRatio`, `particles` (9000/4000/1500), `dustParticles` (600/300/120), `bloom` (solo alto + escritorio) y `textureSize` (2048/1024/512, tope 1024 en móvil). DPR máximo 2 en escritorio y 1.5 en móvil. Nivel inicial: GPU por software o ≤ 2 núcleos o ≤ 2 GB → bajo; móvil, ≤ 4 núcleos o ≤ 4 GB → medio; si no, alto. Medición: 1 s de calentamiento y ventanas de 2 s; si el promedio es < 50 FPS baja un nivel (nunca sube, para no oscilar). Cada frame pesa como máximo 0.1 s en la media y los huecos > 1 s reinician la medición. `?quality=alto|medio|bajo` fija el nivel.
+- `src/scene/SceneManager.ts` — dueño del único canvas y renderer (`alpha`, `antialias` solo en escritorio con DPR < 2, `powerPreference: high-performance`). Cámara de perspectiva (FOV 35, z = 10). Tamaño solo vía `ResizeObserver`. Bucle rAF propio que arma un `FrameContext` reutilizado (`time`, `delta`, `scroll`, `pointer`, `quality`, `reducedMotion`, `viewHalfWidth/Height` del plano z = 0) y llama `update(ctx)` en cada `SceneObject`. Pausas acumulables por motivo (`hidden`, `offscreen`, `context-lost`); `visibilitychange` pausa y reanuda. La pérdida de contexto se trata como definitiva y llama a `onContextLost`. Con reduced motion congela el tiempo y solo renderiza cuando cambia `active`, el tamaño o la calidad.
+- `src/scene/objects/TestCube.ts` — **temporal**. Cubo índigo con aristas `--accent`, luces propias. Se mueve con `page`, se reduce con `sections["que-hacemos"]`, se inclina con `velocity` y hace parallax con el puntero (máx. 0.4). Con reduced motion adopta una pose fija por sección activa.
+- `src/scene/index.ts` — entrada del chunk diferido: crea `<canvas class="scene-canvas" aria-hidden="true">` al inicio del `body`, monta `SceneManager` + `TestCube` y arranca. Si WebGL falla, quita el canvas y relanza el error.
+- `src/main.ts` — `initScroll` inmediato. Tras `load` + `requestIdleCallback` (timeout 2 s): sondeo de WebGL, `import("./scene")`, `data-quality` y fundido GSAP de 0.8 s (canvas 0 → 1, marcador del hero 1 → 0; instantáneo con reduced motion). Ante cualquier fallo, `useFallback()` pone `.no-webgl`, limpia los estilos en línea del marcador y quita el canvas.
+- `src/styles/sections.css` — `.scene-canvas` (fijo, `z-index: -1`, `100lvh`, sin eventos, oculto hasta el fundido) y fallback `.no-webgl .hero__visual .planet-ph` con `planet.webp`.
+- `public/fallback/planet.webp` — 640×640, 29 KB, fondo transparente, misma composición que el marcador CSS (cuerpo índigo noche, rim índigo, anillo y sombra suave).
+- `scripts/fallback-planet.html` + `scripts/make-fallback.mjs` y el script `npm run fallback` — el webp se dibuja en un canvas 2D y se exporta con Edge/Chrome headless. Así es reproducible sin dependencias nuevas.
+- `README.md` — comando `fallback`, parámetro `?quality` y carpetas nuevas.
+
+**Verificación**
+- `npm run build` sin errores (incluye `tsc --noEmit`); sin errores de lint del IDE en `src/`. Peso gzip: **JS inicial 51.1 KB** (meta < 150), CSS 4.8 KB, HTML 8.5 KB; chunk diferido `scene` 134.6 KB (Three.js). El HTML de producción no precarga el chunk de la escena. Vite avisa que `scene` pasa de 500 KB sin comprimir; es Three.js y se carga diferido.
+- Escritorio (1920×1080, DPR 1): `has-webgl` + `lenis`, canvas a pantalla completa, **60 FPS** con el cubo en movimiento, nivel inicial `high`. `scrollState` se actualiza al hacer scroll (`page`, `sections`, `active`) y el cubo se mueve, gira y se reduce. Las `.glass-card` lo desenfocan al pasar por detrás.
+- Móvil emulado (390×844, DPR 3, táctil): nivel `medium`, canvas a 585 px de ancho (DPR limitado a 1.5) y el cubo arriba, centrado.
+- Reduced motion: el navegador de pruebas tenía el ajuste del sistema activo, así que la primera carga ya entró en ese modo. Sin Lenis y cubo en pose fija por sección (`active = 1` → giro de 45°).
+- Sin WebGL (Edge headless con `--disable-3d-apis --disable-webgl` sobre el build): `<html class="no-webgl">`, sin canvas y con el planeta `planet.webp` en el hero.
+- Calidad adaptativa con frames sintéticos sobre el `QualityManager` real: a 60 FPS se mantiene en `high`, también con tirones de 300 ms cada 2 s o un hueco de 5 s (vuelta de pestaña). A 40 FPS y a 3 FPS baja de `high` a `medium` y luego a `low`, actualizando DPR, partículas, textura y bloom.
+- **Bug encontrado y corregido durante la fase:** la primera versión descartaba todo frame > 250 ms como tirón, así que un dispositivo muy lento nunca bajaba de nivel. Ahora cada frame pesa como máximo 0.1 s en la media.
+- **No verificado en navegador:** la pausa con la pestaña oculta (el navegador de pruebas no permite ocultarla; la ruta de código es directa) y la bajada de nivel con CPU 4× real. Con CPU 20–30× más lenta el navegador de pruebas casi no daba frames, así que la medición no era fiable. Queda para la Fase 7 en un dispositivo real.
+
+**Desviaciones del plan**
+- **Solo el marcador del hero se oculta** con WebGL activo. El de `.about__panel` sigue siendo CSS, porque el panel es opaco y el canvas fijo queda detrás: hasta la Fase 4 el panel no tiene otro contenido.
+- **El fallback `planet.webp` solo se aplica al hero.** El panel de "Sobre" conserva su marcador CSS, que ya está pensado para fondo oscuro.
+- **El fallback es un dibujo 2D**, no un render del planeta real, porque el planeta aún no existe. La Fase 3 puede regenerarlo desde su shader.
+- **La pérdida de contexto WebGL pasa al fallback de forma definitiva**, sin intentar restaurar: es más simple y no deja la escena a medias.
+- Se añadieron `data-quality` en `<html>` y `?quality=` en la URL, que no estaban en el plan: permiten probar los niveles y recortar CSS caro en el nivel bajo (riesgo de `backdrop-filter` anotado en la Fase 1).
+- El motivo de pausa `offscreen` existe en la API, pero **nada lo activa todavía**.
+- `prefers-reduced-motion` se lee una vez al cargar; un cambio en caliente no reconfigura Lenis (`SceneManager.setReducedMotion` existe por si se quiere enlazar).
+
+**Handoff a la Fase 3**
+- Le toca: el planeta del hero según el Prompt 3. Primero 2 variantes de estilo (obsidiana pulida vs. roca lunar) y elegir una; luego shader propio, rim `#5B5BF0`, atmósfera fresnel con blending normal, sombra suave, dos anillos, luna, polvo en GPU, parallax con puntero (no táctil) y posición responsive. Medir el costo en FPS en nivel medio (`?quality=medio`).
+- Quedó listo:
+  - **Contrato de objeto:** implementar `SceneObject` (`root`, `update(ctx)`, `onResize?(ctx)`, `onQualityChange?(params)`, `dispose()`) y registrarlo con `manager.add(...)` en `src/scene/index.ts`. **Sustituir `TestCube`** (borrar `objects/TestCube.ts` y su `add`). El cubo trae sus propias luces: el planeta necesita las suyas.
+  - `ctx.viewHalfWidth/Height` dan el tamaño visible en z = 0 para colocar el planeta "a la derecha en escritorio, arriba en móvil" (ver `TestCube.onResize`, que ya distingue horizontal/vertical). Recalcular solo en `onResize`, nunca leer el DOM en `update`.
+  - `ctx.quality.dustParticles` y `ctx.quality.textureSize` para el polvo y las texturas; `onQualityChange` para regenerar si baja el nivel. `ctx.pointer.enabled` es `false` en táctil, así que el parallax queda apagado solo.
+  - Con `ctx.reducedMotion` el planeta debe quedar en una pose estática (sin rotación continua, `ctx.time` congelado).
+  - `.has-webgl` ya oculta el marcador del hero con fundido; `.no-webgl` muestra `planet.webp`.
+- Pendientes / riesgos:
+  - Regenerar `public/fallback/planet.webp` para que se parezca al planeta final (`npm run fallback` o un render del shader).
+  - El canvas usa `alpha: true` sin `premultipliedAlpha: false`: la atmósfera con blending normal debe escribir alfa premultiplicado correcto o se verán halos oscuros sobre el papel claro.
+  - El planeta no debe pasar por detrás del titular (`h1`) en ningún ancho.
+- Para fases posteriores (anotado, no implementado):
+  - **Fase 4:** `scrollState.sections[id]` va de 0 (la sección entra por abajo) a 1 (sale por arriba); el hero arranca a ~0.5 porque ya está en pantalla. La franja de pilares no tiene `id`: mientras cruza el centro, `active` se queda en 0. El holograma de "Sobre" necesitará que `.about__panel` deje ver el canvas (fondo transparente o un recorte) o dibujar dentro de su rectángulo. Al hacerlo, quitar el marcador CSS del panel.
+  - **Fase 5:** `.dark-island` es opaca (`--space`) y tapa el canvas. Habrá que volverla transparente cuando el fondo WebGL oscurezca. El motivo de pausa `offscreen` está disponible si alguna zona no necesita render. `ctx.quality.particles` ya trae 9000/4000/1500 y `ctx.quality.bloom` decide el pase de lente en escritorio.
+  - **Fase 6:** Lenis no intercepta anclas (`anchors` sin configurar); el scroll suave de la navegación debe usar `lenis.scrollTo` (`initScroll` devuelve la instancia, hoy no se guarda en `main.ts`).
+  - **Fase 7:** probar la bajada de nivel en un móvil real con CPU 4×. Con `html[data-quality="low"]` se puede quitar `backdrop-filter`. El sondeo de WebGL en `main.ts` crea y libera un contexto extra (`WEBGL_lose_context`): medir si cuesta.
 
 ---
 
