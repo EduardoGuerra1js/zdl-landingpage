@@ -39,10 +39,12 @@ export function initScroll(reducedMotion: boolean): Lenis | null {
 
   const heroVisual = document.querySelector<HTMLElement>(".hero__visual .planet-ph");
   const aboutPanel = document.querySelector<HTMLElement>(".about__panel");
+  const ctaVisual = document.querySelector<HTMLElement>(".cta__visual");
   const measure = (): void => {
     scrollState.y = window.scrollY;
     if (heroVisual) writeRect(heroVisual, layoutState.hero);
     if (aboutPanel) writeRect(aboutPanel, layoutState.about);
+    if (ctaVisual) writeRect(ctaVisual, layoutState.cta);
     for (const id of SECTION_IDS) {
       const el = document.getElementById(id);
       if (!el) continue;

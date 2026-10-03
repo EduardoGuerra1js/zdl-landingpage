@@ -266,6 +266,17 @@ p {
   backdrop-filter: blur(var(--glass-blur));
 }
 
+/* Borde luminoso: un trazo encima, visible por opacidad. No tapa el contenido. */
+.glass-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--accent);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .glass-card h3 {
   font-size: var(--fs-h3);
   hyphens: auto;
@@ -342,6 +353,11 @@ p {
   color: var(--ink);
 }
 
+.metric__value[data-count] {
+  display: inline-block;
+  min-width: 3ch;
+}
+
 .metric__label {
   font-size: var(--fs-small);
   color: var(--muted);
@@ -392,6 +408,43 @@ p {
     opacity: 0.01;
     transform: translateY(12px);
     animation: hero-reveal-fallback 0.6s 3s forwards;
+  }
+
+  .btn {
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      background-color var(--dur-base) var(--ease-out),
+      border-color var(--dur-base) var(--ease-out),
+      color var(--dur-base) var(--ease-out);
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .glass-card:not(.project-card),
+  .glass-card::after {
+    transition:
+      transform var(--dur-base) var(--ease-out),
+      opacity var(--dur-base) var(--ease-out);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .glass-card:hover::after,
+  .glass-card:focus-within::after {
+    opacity: 1;
+  }
+
+  .glass-card:hover:not(.project-card),
+  .glass-card:focus-within:not(.project-card) {
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: none) {
+  .glass-card:active {
+    transform: scale(0.985);
   }
 }
 

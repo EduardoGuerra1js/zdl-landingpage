@@ -29,6 +29,8 @@ export interface LayoutData {
   hero: Rect;
   /** `.about__panel`: el panel oscuro de "Sobre" (su fondo lo dibuja la escena). */
   about: Rect;
+  /** `.cta__visual`: el escenario del agujero negro en el CTA final. */
+  cta: Rect;
   /** Tramo vertical de cada sección con `id`. */
   sections: Record<SectionId, Span>;
   /** `window.innerHeight` (la referencia de ScrollTrigger), en px. */
@@ -51,6 +53,7 @@ function createSpans(): Record<SectionId, Span> {
 export const layoutState: LayoutData = {
   hero: createRect(),
   about: createRect(),
+  cta: createRect(),
   sections: createSpans(),
   viewportHeight: 0,
   scrollMax: 0,

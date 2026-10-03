@@ -2,6 +2,8 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/sections.css";
 import { gsap } from "gsap";
+import { initMicrointeractions } from "./ui/microinteractions";
+import { initNav } from "./ui/nav";
 import { initProcessOrbit } from "./ui/process";
 import { initReveals } from "./ui/reveals";
 import { initScroll } from "./ui/scroll";
@@ -17,9 +19,11 @@ import { initScroll } from "./ui/scroll";
 const root = document.documentElement;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-initScroll(reducedMotion);
+const lenis = initScroll(reducedMotion);
 initProcessOrbit(reducedMotion);
 initReveals(reducedMotion);
+initNav(lenis);
+initMicrointeractions(reducedMotion);
 afterFirstPaint(bootScene);
 
 function afterFirstPaint(callback: () => void): void {

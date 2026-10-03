@@ -44,8 +44,8 @@ Estados: `Pendiente` · `En curso` · `Completada`.
 | 2 | Motor 3D y calidad adaptativa | Opus 5.5 | Completada |
 | 3 | Planeta del hero | Opus 5.5 (rescate: Opus 5 Thinking High) | Completada |
 | 4 | Coreografía del scroll | Sonnet 5.5 | Completada |
-| 5 | CTA y agujero negro | Opus 5.5 (rescate: Opus 5 Thinking High) | Pendiente |
-| 6 | UX/UI, microinteracciones y pulido | Sonnet 5.5 | Pendiente |
+| 5 | CTA y agujero negro | Opus 5.5 (rescate: Opus 5 Thinking High) | Completada |
+| 6 | UX/UI, microinteracciones y pulido | Sonnet 5.5 | Completada |
 | 7 | Auditoría de rendimiento | GPT 5.6 | Pendiente |
 
 Decisiones transversales registradas aquí a medida que se toman:
@@ -58,7 +58,7 @@ Decisiones transversales registradas aquí a medida que se toman:
 - **Fuentes:** woff2 variables, subconjunto latino, autoalojadas en `public/fonts/` (Manrope 24 KB, Inter 48 KB), `font-display: swap` y `preload` en `index.html`. Sin Google Fonts ni paquetes npm de fuentes.
 - **Logo en el sitio:** en línea como `<symbol id="zdl-mark">` + `<text>` con Inter autoalojada, porque los SVG de marca tienen el texto como texto editable y dentro de `<img>` no usarían la fuente de la página. Color por variables `--logo-ink`/`--logo-accent` (clases `.logo--light` y `.logo--dark`); la geometría no se toca.
 - **Tokens extra para islas oscuras:** `--dark-ink #F7F6FC` (18.6:1), `--dark-muted #B9B9E3` (10.6:1), `--dark-accent #A5A5FF` (9:1) sobre `--space`. `--accent` sobre `--space` da solo ~4:1, así que no se usa para texto pequeño en oscuro.
-- **Microinteracciones:** las transiciones quedan para la Fase 6; en la Fase 1 los estados hover son cambios instantáneos de color.
+- **Microinteracciones:** `--dur-fast` (150 ms), `--dur-base` (220 ms) y `--ease-out`. Solo `transform` y `opacity`. El cursor magnético es el botón «Ver proyectos» del hero (escritorio, puntero fino). `24/7` no se anima: no es una cuenta.
 - **Carga del 3D:** `main.ts` (bundle inicial: CSS + GSAP + ScrollTrigger + Lenis, ~51 KB gzip) y `import("./scene")` tras `load` + `requestIdleCallback`. Three.js y todo `src/scene/` salvo `ScrollState`/`PointerState` viven en el chunk diferido `scene-*.js`.
 - **Estados en `<html>`:** `.has-webgl` (canvas activo), `.no-webgl` (fallback) y `data-quality="high|medium|low"`. Son el punto de enganche del CSS que dependa del 3D.
 - **Un solo rAF por subsistema:** Lenis avanza en `gsap.ticker`; la escena tiene su propio rAF en `SceneManager` (no depende de GSAP).
@@ -72,6 +72,11 @@ Decisiones transversales registradas aquí a medida que se toman:
 - **Franjas de vidrio:** pilares y áreas son translúcidas (`rgba(232,232,250,.82)` + blur 18 px) para que el planeta se intuya detrás; en calidad baja, sin blur.
 - **Animación por tiempo vs. scroll:** lo atado al scroll es lineal (planeta, órbita del proceso); los momentos que se disparan una vez (entrada del hero, revelados, escaneo AR) usan easing suave. `scrollState.scan` lo escribe `ui/reveals.ts`.
 - **Revelados:** opacidad + 12 px, una vez, sin stagger por tarjeta. Con reduced motion no hay revelados y todo aparece en su estado final.
+- **Velo anclado a la página, no al tiempo:** el paso de claro a `#07061A` es un degradado vertical dibujado en el canvas (`NightSky`) cuya posición sale del borde superior de `#contacto` menos el scroll. Con WebGL, `.scene-ready .dark-island` es transparente. No hay tween que sincronizar y la legibilidad se puede calcular por posición.
+- **Tramo del cierre compartido:** `src/scene/finale.ts` define el tramo de scroll (arranca con el borde de la isla al 72 % del viewport; termina al 85 % del recorrido hasta el final de la página). Lo usan la coreografía del planeta (`target: "finale"`), el agujero negro y, por posición, el cielo.
+- **Superficies en el canvas con profundidad:** el velo y las estrellas se dibujan en `z = 0.999/0.998` (fondo del buffer de profundidad) con `depthTest`, para que el cuerpo opaco del planeta no quede tapado. El horizonte del agujero negro es transparente con `depthWrite` para ocultar la mitad trasera del disco.
+- **Postprocesado solo cuando hace falta:** `PostPass` en `SceneManager`. `LensPass` (desktop + calidad alta) reserva un render target MSAA ×4 solo mientras el agujero negro está en pantalla; si no, la escena va directo al lienzo y el target se libera.
+- **Calidad:** `QualityParams` gana `stars` (700/400/200). `bloom` se documenta como "permite el pase de lente".
 
 ---
 
@@ -400,16 +405,110 @@ Estrecho (< 1152 px: móvil, tablet y escritorio estrecho, donde las rejillas oc
 ---
 
 ### Fase 5 — CTA y agujero negro · Opus 5.5 (rescate: Opus 5 Thinking High)
-**Estado:** Pendiente
+**Estado:** Completada · 2026-10-02
 
 _Alcance:_ transición claro a oscuro, colapso del planeta, estrellas, agujero negro con disco y lente (partículas 9000/4000/1500), distorsión de pantalla solo en escritorio, legibilidad AA del CTA a media transición.
+
+**Resumen de cambios**
+- `src/scene/finale.ts` — **nuevo**. `finaleStart/Span/Progress(layout, scrollY)` y `smoothstep`. Un solo tramo de scroll para planeta, agujero negro y cielo.
+- `src/scene/objects/NightSky.ts` + `shaders/veil.vert|frag`, `stars.vert|frag` — **nuevo**.
+  - **Velo:** un cuadro a pantalla completa en el fondo del buffer de profundidad. El alfa es `smoothstep` en función del y de pantalla, con rampa de 0.05 vh antes del borde de la isla a 0.20 vh después, más ruido de ±0.5/255 contra bandas.
+  - **Estrellas:** 700/400/200 `Points` en NDC con parallax por scroll (10 % del contenido, según una "profundidad" por estrella) y parpadeo en el vertex shader. Solo se ven donde el velo ya es oscuro.
+  - Todo el trabajo va en la GPU; el buffer se reserva una vez y la calidad solo mueve `drawRange`. Se oculta (`visible = false`) cuando la rampa aún no entra en pantalla.
+- `src/scene/objects/BlackHole.ts` + `shaders/blackhole.glsl`, `bh-particles.vert|frag`, `bh-disc.frag`, `bh-lens.frag`, `bh-horizon.frag` — **nuevo**.
+  - **Horizonte** negro (disco SDF) que escribe profundidad y oculta la mitad trasera del disco.
+  - **Disco de acreción:** `quality.particles` puntos (9000/4000/1500). Radio, fase, grosor y semilla son atributos estáticos; el vertex shader calcula ángulo con rotación diferencial kepleriana (`ω ∝ r^-1.5`: el interior gira ~4.7× más rápido que el borde), inclinación de 78°, color (blanco cálido → naranja → magenta → índigo `#5B5BF0`), efecto Doppler (el lado que se acerca brilla más) y parpadeo.
+  - **Cuerpo continuo del disco:** un quad inclinado con estrías procedurales que se enroscan con la misma `ω(r)`, para que no parezca polvo suelto.
+  - **Lente gravitacional barata:** un quad de cara a la cámara con el arco sobre el horizonte, el anillo de fotones y el halo, más una segunda pasada de partículas (la mitad, comparten buffer) con la imagen "lensada" del disco.
+  - Aparece con `smoothstep(0.05, 0.5, finaleProgress)`. Escribe `LensState`. Cero asignaciones por frame.
+- `src/scene/post/LensPass.ts` + `shaders/lens.frag` — **nuevo**. Pase único de pantalla completa que empuja la imagen hacia fuera del agujero (siempre muestrea más cerca del centro, así no sale del lienzo). Solo con `quality.bloom` (escritorio + alto). Render target RGBA MSAA ×4 creado solo mientras el pase está activo y liberado al salir.
+- `src/scene/SceneManager.ts` — interfaz `PostPass` y opción `post`: si `post.active` el pase dibuja la escena; si no, dibujo directo y `release()`. `onQualityChange` y `dispose` se propagan al pase.
+- `src/scene/choreography.ts` — ancla nueva `cta`, destino `finale` (fracción del tramo del cierre) y `travel` en una clave (cambia de ancla viajando, sin la regla de radio cero). En ancho, `contacto 0.3` se sustituye por: `finale 0` (pose del margen), `finale 0.5` (`cta`, r = 0, giro 7, sin sombra ni polvo) y `finale 1` (reposo). El planeta cae hacia el agujero y desaparece justo cuando éste termina de formarse. En estrecho el planeta sigue oculto (`finale 0.5`, reposo).
+- `src/scene/LayoutState.ts`, `src/ui/scroll.ts` — `layoutState.cta` (rectángulo de `.cta__visual`), medido en cada `refresh`.
+- `src/scene/QualityManager.ts` — `stars` en los presets.
+- `src/scene/random.ts` — **nuevo**: `mulberry32` compartido (`Dust`, `NightSky`, `BlackHole`); se quitó la copia de `Dust.ts`.
+- `src/scene/index.ts` — registra `NightSky`, `Planet`, `BlackHole` y el `LensPass`.
+- `index.html` — el CTA pasa a `.cta__layout` con `.cta__visual` (escenario del agujero negro, con `.bh-ph` de respaldo) y `.cta__inner`.
+- `src/styles/sections.css`
+  - CTA en dos columnas desde 60 rem (texto a la izquierda, agujero negro a la derecha, 5:4) y apilado en móvil (agujero negro arriba, texto centrado debajo).
+  - `padding-top: max(6rem, 22svh)`: el primer texto empieza siempre por debajo de donde el velo ya es opaco.
+  - `.scene-ready .dark-island` transparente y sin radios (el fondo lo pone el velo).
+  - `.bh-ph`: respaldo CSS sin WebGL (horizonte, anillo de luz y disco de canto), oculto con `.has-webgl`.
+
+**Verificación**
+- `npm run build` sin errores (incluye `tsc --noEmit`). Peso gzip: **JS inicial 52.45 KB** (antes 52.4; solo cambia `layoutState`), CSS 5.24 KB, chunk `scene` **146.1 KB** (antes 141.5; cielo, agujero negro y lente suman ~4.6 KB).
+- FPS en escritorio (1440×900, DPR 1, `?quality=alto`, con el pase de lente activo): **60 FPS (p95 16.8 ms)** con el agujero negro completo y **60 FPS con CPU 4× más lenta** a mitad de la transición. `?quality=bajo` (1500 partículas, sin lente): 60 FPS.
+- Revisión visual en 1440×900: inicio de la transición (borde de la isla al 71 % del viewport), punto medio (55 %), tramo final (37 %) y reposo al final del scroll. El degradado de papel a `#07061A` es continuo, las estrellas aparecen dentro de lo oscuro y el planeta cae al agujero negro con sus anillos hasta desaparecer.
+- **Punto medio de la transición (pedido del Prompt 5):** con el borde de la isla al 55 % del viewport, la mitad superior sigue siendo papel con la parte baja de las tarjetas del blog; justo debajo hay una franja de ~0.25 vh con el degradado y, bajo ella, el cielo ya plenamente oscuro con estrellas. El planeta (pequeño, con sus anillos) está a medio caer hacia el agujero negro, que aparece parcialmente en la columna derecha, y empiezan a verse el eyebrow y el titular del CTA ya sobre fondo oscuro. Las tarjetas del blog terminan ≥ 72 px antes del borde de la isla y la rampa empieza 0.05 vh antes, así que ningún texto del blog queda sobre el degradado.
+- **Legibilidad AA (calculada por posición, WCAG):** como el velo depende solo de la posición, el contraste de cada texto es constante con el scroll. En 1280×600 (el peor caso: el texto más cerca del borde) y en 360 px de ancho, eyebrow (`#A5A5FF`) 9:1, titular 18.6:1, subtítulo (`#B9B9E3`) 10.6:1 y botón 20:1. El texto más alto del CTA queda a 0.30 vh del borde (en 1280×600) y el velo ya es 100 % opaco a 0.20 vh.
+- Reduced motion: sin Lenis, agujero negro estático al llegar al CTA y planeta ya ausente. Sin WebGL (simulado): la isla vuelve a su fondo `--space` con esquinas redondeadas y se ve el respaldo CSS.
+- Móvil emulado (374×811 reales de la pestaña, DPR 3, táctil, nivel medio): el agujero negro entra bajo el degradado, sin pase de lente, y el texto del CTA queda legible. Sin scroll horizontal.
+- **No verificado:** un móvil real, la distorsión de lente con una GPU integrada (en esta máquina cuesta 0 ms visibles), el parallax de estrellas con Lenis a velocidad alta y LCP con Lighthouse. Tampoco puedo afirmar el "look" fino del disco (proporciones y color) más allá de las capturas; conviene que lo revises a mano.
+
+**Desviaciones del plan**
+- **En móvil y tablet estrecha el agujero negro no está en pantalla en el reposo final.** El CTA apila agujero negro + texto + pie de página, y con el pie de ~250 px el agujero negro queda justo encima del viewport al llegar al final. Se ve al atravesar la sección, pero al llegar al fondo solo queda el texto, que es lo que más importa. No se puede encajar todo en 360×780 sin recortar el pie, que es trabajo de la Fase 6.
+- **El planeta no colapsa en móvil / escritorio estrecho (< 1152 px):** allí ya estaba oculto desde la Fase 4, así que solo "aparece" el agujero negro.
+- **Sin distorsión de pantalla en móvil ni en nivel medio/bajo** (según el prompt). El halo, el disco y los arcos de lente sí están en todos los niveles.
+- **El agujero negro vive en una columna a la derecha del CTA** y el texto pasa a alinearse a la izquierda en escritorio (antes, centrado). Con el texto centrado el disco quedaba detrás del titular y no cumplía AA.
+- **Extensiones al motor de las Fases 2–4** (no se reabrieron): `PostPass` en `SceneManager`, `stars` en `QualityParams`, `layoutState.cta`, ancla `cta` y `travel` en la coreografía.
+- Se movió `mulberry32` a `src/scene/random.ts` para no copiarlo por tercera vez.
+
+**Handoff a la Fase 6**
+- Le toca: la fase de pulido (jerarquía y espaciado, microinteracciones, tilt de proyectos, anclas con `lenis.scrollTo`, estado activo del nav, menú móvil accesible, teclado y reduced motion en todo).
+- Quedó listo:
+  - **Estados en `<html>`** sin cambios: `.has-webgl`, `.scene-ready` (ahora también desactiva el fondo de `.dark-island`), `.no-webgl`, `data-quality`.
+  - **Pie de página sobre el velo:** con `.scene-ready` el footer está sobre el canvas; su texto ya usa los tokens `--dark-*` (AA verificado sobre `--space`).
+  - **Respaldo CSS del agujero negro** (`.bh-ph`) por si se quiere retocar o animar sin WebGL.
+  - `layoutState.cta`, `finaleProgress(layout, y)` y `scrollState.sections.contacto` para atar microinteracciones del CTA (por ejemplo un contador o un cursor magnético en el botón "Escríbenos") sin medir el DOM en el frame loop.
+- Pendientes / riesgos:
+  - El agujero negro desaparece de pantalla en móvil al llegar al final. Si se quiere verlo en el reposo, hay que compactar el CTA o el pie en móvil.
+  - Los anclajes (`#contacto`, el enlace "Hablemos" del header) hacen `scrollTo` al borde de la isla: con `lenis.scrollTo` el scroll pasará por todo el tramo del cierre. Revisar que no se sienta lento y que `scroll-padding-top` no deje el CTA bajo el degradado.
+  - `border-radius` de `.dark-island` y su fondo cambian en `.scene-ready`: cualquier estilo nuevo sobre ese contenedor debe contemplar que es transparente con WebGL.
+- Para fases posteriores (anotado, no implementado):
+  - **Fase 7:** el render no se pausa cuando no hay nada visible (motivo `offscreen`): entre "Qué hacemos" y el final el canvas sigue dibujando el planeta y el velo oculto. `NightSky` y `BlackHole` ya se ocultan solos (`visible = false`), pero el rAF sigue. Medir el costo del pase de lente (render target MSAA ×4 a pantalla completa) en una GPU integrada y en pantallas 4K (DPR 2). Verificar con un navegador real el comportamiento de `100lvh` en móviles con barra de URL dinámica: el velo usa el alto del canvas.
+  - **Fase 7:** valorar `premultipliedAlpha` y el costo del `discard` por píxel del velo (cuadro completo, aunque la mayoría de los frames no entra en pantalla).
 
 ---
 
 ### Fase 6 — UX/UI, microinteracciones y pulido · Sonnet 5.5
-**Estado:** Pendiente
+**Estado:** Completada · 2026-10-02
 
 _Alcance:_ jerarquía y espaciado en las 9 secciones; microinteracciones; tilt 3D de tarjetas de proyectos; navegación con anclas, estado activo y menú móvil accesible; accesibilidad por teclado; `prefers-reduced-motion` en todo.
+
+**Resumen de cambios**
+- `src/styles/base.css`, `src/styles/sections.css` — presión de botones (`scale(0.97)`), subrayado de nav, pie y correo del CTA con `scaleX`, elevación y borde luminoso de `.glass-card` por opacidad, escala del índice al alcanzar un paso del proceso, y brillo radial de las tarjetas de proyectos. Todo dentro de `prefers-reduced-motion: no-preference`, con las duraciones ya definidas en tokens.
+- `src/ui/microinteractions.ts` — **nuevo**. Contadores de `12+` y `6` una sola vez al entrar (GSAP + ScrollTrigger). Con puntero fino: el botón del hero se desplaza hacia el cursor dentro de un radio corto (el `span.magnetic` separa ese desplazamiento de la presión del botón) y las `.project-card` se inclinan como máximo 6°.
+- `src/ui/nav.ts` — **nuevo**. Anclas con `lenis.scrollTo` (duración acotada a 1.25 s; sin Lenis, scroll nativo). `aria-current` en el enlace de la sección que cruza el centro del viewport, en el header y en el pie. Menú bajo 60 rem: botón con `aria-expanded`, panel, cierre con Escape, con el enlace y al pasar a escritorio, foco atrapado y devuelto al botón. Mientras está abierto, `lenis.stop()`.
+- `src/main.ts`, `index.html` — arranque de nav y microinteracciones; botón de menú; `data-count` en las dos métricas; envoltura magnética del botón principal.
+- Espaciado móvil del cierre: menos hueco en el CTA y en el pie, y el escenario del agujero negro un poco más bajo, para que al llegar al final se vea la mitad inferior del disco bajo el header. El `padding-top` del CTA no se tocó: el primer texto sigue bajo el velo.
+
+**Verificación**
+- `npm run build` sin errores (incluye `tsc`). Peso gzip: **JS inicial 53.88 KB** (antes 52.45; nav y microinteracciones), CSS 6.06 KB, chunk `scene` **146.12 KB** (sin cambio). Sigue bajo el tope de 150 KB.
+- Escritorio, con reduced motion desactivado por emulación (el sistema de pruebas lo tiene activo): el ancla `#proyectos` deja la sección a 84 px, que es el `scroll-padding-top`. `aria-current` en header y pie. El magnético desplaza el botón (8.4 px / 3.4 px en la prueba). La tarjeta de proyecto inclina y sube 4 px. Los contadores pasan de `0` a `12+` y `6`. El índice del proceso alcanzado escala a 1.06. A 1000 px el nav queda entre el logo y «Hablemos», con 121 px de aire a cada lado.
+- Móvil emulado (~360×780): botones del hero a 320×48 px, apilados, el último termina hacia y=741. Menú abre, enfoca el primer enlace y no mueve el scroll; Escape lo cierra y devuelve el foco al botón. `#blog` queda a 72 px (el padding móvil). Sin scroll horizontal en el contenido. Al final del scroll se ven unos 100 px del agujero negro por debajo del header; el texto del CTA sigue sobre fondo oscuro.
+- Reduced motion (carga con el ajuste del sistema): sin Lenis, contadores en su valor final, sin tilt ni magnético.
+- **No verificado:** un móvil real, el recorrido completo con un lector de pantalla y Lighthouse.
+
+**Desviaciones del plan**
+- **No hay mockup** contra el que corregir un look genérico. La pasada de jerarquía se limitó al cierre móvil (el agujero negro se salía del reposo) y a centrar el nav de escritorio, que el `margin-left: auto` del grupo de acciones había pegado al logo.
+- **`24/7` no cuenta.** Solo se animan `12+` y `6`.
+- **El panel del menú es opaco** (`--bg`). Con el fondo translúcido el texto de la página se leía detrás de los enlaces.
+- **En el reposo móvil el agujero negro no cabe entero.** Compactar padding no alcanza sin recortar el pie. Queda visible la mitad inferior, bajo el header. El `padding-top` del CTA se conservó para no meter el texto en el degradado.
+- **Lenis ya resta `scroll-padding-top`.** Un offset manual lo duplicaba y dejaba el ancla 84 px más abajo.
+
+**Handoff a la Fase 7**
+- Le toca: la auditoría de rendimiento del Prompt 7 (Lighthouse móvil, perfil del render, calidad adaptativa con CPU 4×, carga diferida, reduced motion y fallback).
+- Quedó listo:
+  - JS inicial **53.88 KB gzip**, escena **146.12 KB gzip**. El HTML de producción no precarga el chunk de la escena.
+  - Estados en `<html>` sin cambios: `.has-webgl`, `.scene-ready`, `.no-webgl`, `data-quality`, y ahora `.nav-open` mientras el menú móvil está abierto.
+  - Anclas, menú, contadores, tilt y magnético. Con reduced motion no hay Lenis ni esas animaciones.
+- Pendientes / riesgos (siguen siendo de rendimiento, no de esta fase):
+  - El render no se pausa con el motivo `offscreen` cuando no hay planeta ni agujero negro en pantalla.
+  - Costo del pase de lente (render target MSAA ×4) en GPU integrada y en 4K, y de `backdrop-filter` en header, tarjetas y franjas de vidrio con el canvas detrás. En calidad baja las franjas ya quitan el blur.
+  - LCP con el hero a opacidad 0.01. El respaldo CSS a los 3 s sigue ahí.
+  - `100lvh` y la barra de URL del móvil: el velo usa el alto del canvas.
+  - El sondeo de WebGL en `main.ts` crea y libera un contexto extra.
+  - Valorar `premultipliedAlpha` y el `discard` del velo a pantalla completa.
 
 ---
 

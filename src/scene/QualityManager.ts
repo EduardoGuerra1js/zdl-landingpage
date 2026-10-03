@@ -17,7 +17,9 @@ export interface QualityParams {
   particles: number;
   /** Polvo alrededor del planeta. */
   dustParticles: number;
-  /** Bloom de baja resolución: solo escritorio en nivel alto. */
+  /** Estrellas del cielo nocturno del cierre. */
+  stars: number;
+  /** Postprocesado (pase de lente del agujero negro): solo escritorio en nivel alto. */
   bloom: boolean;
   /** Lado máximo de textura en px (1024 como tope en móvil). */
   textureSize: number;
@@ -26,9 +28,9 @@ export interface QualityParams {
 const LEVELS: readonly QualityLevel[] = ["low", "medium", "high"];
 
 const PRESETS: Record<QualityLevel, Omit<QualityParams, "level" | "pixelRatio" | "bloom"> & { maxDpr: number }> = {
-  high: { maxDpr: 2, particles: 9000, dustParticles: 600, textureSize: 2048 },
-  medium: { maxDpr: 1.5, particles: 4000, dustParticles: 300, textureSize: 1024 },
-  low: { maxDpr: 1, particles: 1500, dustParticles: 120, textureSize: 512 },
+  high: { maxDpr: 2, particles: 9000, dustParticles: 600, stars: 700, textureSize: 2048 },
+  medium: { maxDpr: 1.5, particles: 4000, dustParticles: 300, stars: 400, textureSize: 1024 },
+  low: { maxDpr: 1, particles: 1500, dustParticles: 120, stars: 200, textureSize: 512 },
 };
 
 const URL_LEVELS: Record<string, QualityLevel> = { alto: "high", medio: "medium", bajo: "low" };
@@ -60,7 +62,7 @@ export class QualityManager {
     this.locked = forced !== undefined;
     this.index = LEVELS.indexOf(forced ?? this.detect(gl));
 
-    this.params = { level: "low", pixelRatio: 1, particles: 0, dustParticles: 0, bloom: false, textureSize: 0 };
+    this.params = { level: "low", pixelRatio: 1, particles: 0, dustParticles: 0, stars: 0, bloom: false, textureSize: 0 };
     this.apply();
   }
 
@@ -117,6 +119,7 @@ export class QualityManager {
     p.pixelRatio = Math.min(window.devicePixelRatio || 1, deviceMaxDpr, preset.maxDpr);
     p.particles = preset.particles;
     p.dustParticles = preset.dustParticles;
+    p.stars = preset.stars;
     p.bloom = level === "high" && !this.isMobile;
     p.textureSize = this.isMobile ? Math.min(preset.textureSize, 1024) : preset.textureSize;
   }

@@ -89,7 +89,7 @@
             <text x="282" y="184" font-weight="600" font-size="54" textLength="560" lengthAdjust="spacing" style="fill: var(--logo-accent)">LABS</text>
           </svg>
         </a>
-        <nav class="site-nav" aria-label="Principal">
+        <nav class="site-nav" id="site-nav-panel" aria-label="Principal">
           <ul role="list">
             <li><a href="#que-hacemos">Qué hacemos</a></li>
             <li><a href="#sobre">Sobre</a></li>
@@ -98,7 +98,18 @@
             <li><a href="#blog">Blog</a></li>
           </ul>
         </nav>
-        <a class="btn btn--primary btn--sm site-header__cta" href="mailto:hola@zerodaylabs.com">Hablemos</a>
+        <div class="site-header__actions">
+          <button
+            class="nav-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="site-nav-panel"
+            aria-label="Abrir menú"
+          >
+            <span class="nav-toggle__icon" aria-hidden="true"></span>
+          </button>
+          <a class="btn btn--primary btn--sm site-header__cta" href="mailto:hola@zerodaylabs.com">Hablemos</a>
+        </div>
       </div>
     </header>
 
@@ -114,10 +125,12 @@
               audaces en soluciones que funcionan en el mundo real.
             </p>
             <div class="hero__actions" data-hero-reveal>
-              <a class="btn btn--primary" href="#proyectos">
-                Ver proyectos
-                <svg class="i" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg>
-              </a>
+              <span class="magnetic">
+                <a class="btn btn--primary" href="#proyectos" data-magnetic>
+                  Ver proyectos
+                  <svg class="i" aria-hidden="true" focusable="false"><use href="#i-arrow" /></svg>
+                </a>
+              </span>
               <a class="btn btn--secondary" href="mailto:hola@zerodaylabs.com">Hablemos</a>
             </div>
           </div>
@@ -231,11 +244,11 @@
             <dl class="metrics">
               <div class="metric">
                 <dt class="metric__label">Proyectos prototipados</dt>
-                <dd class="metric__value">12+</dd>
+                <dd class="metric__value" data-count="12" data-suffix="+">12+</dd>
               </div>
               <div class="metric">
                 <dt class="metric__label">Áreas de investigación</dt>
-                <dd class="metric__value">6</dd>
+                <dd class="metric__value" data-count="6">6</dd>
               </div>
               <div class="metric">
                 <dt class="metric__label">Experimentos en marcha</dt>
@@ -441,21 +454,24 @@
       </section>
     </main>
 
-    <!-- 9. CTA final + footer: isla oscura (agujero negro en Fase 5). -->
+    <!-- 9. CTA final + footer: isla oscura. El agujero negro lo dibuja el canvas dentro de .cta__visual. -->
     <div class="dark-island on-dark">
       <section class="cta" id="contacto" aria-labelledby="cta-title">
-        <div class="container cta__inner">
-          <p class="eyebrow">Contacto</p>
-          <h2 id="cta-title">Construyamos juntos lo que sigue.</h2>
-          <p class="lead">
-            Nos encantan las ideas audaces y las personas que quieren hacerlas realidad. Cuéntanos qué quieres probar.
-          </p>
-          <div class="cta__actions">
-            <a class="btn btn--primary" href="mailto:hola@zerodaylabs.com">
-              <svg class="i" aria-hidden="true" focusable="false"><use href="#i-mail" /></svg>
-              Escríbenos
-            </a>
-            <a class="cta__email" href="mailto:hola@zerodaylabs.com">hola@zerodaylabs.com</a>
+        <div class="container cta__layout">
+          <div class="cta__visual" aria-hidden="true"><span class="bh-ph"></span></div>
+          <div class="cta__inner">
+            <p class="eyebrow">Contacto</p>
+            <h2 id="cta-title">Construyamos juntos lo que sigue.</h2>
+            <p class="lead">
+              Nos encantan las ideas audaces y las personas que quieren hacerlas realidad. Cuéntanos qué quieres probar.
+            </p>
+            <div class="cta__actions">
+              <a class="btn btn--primary" href="mailto:hola@zerodaylabs.com">
+                <svg class="i" aria-hidden="true" focusable="false"><use href="#i-mail" /></svg>
+                Escríbenos
+              </a>
+              <a class="cta__email" href="mailto:hola@zerodaylabs.com">hola@zerodaylabs.com</a>
+            </div>
           </div>
         </div>
       </section>

@@ -1,6 +1,9 @@
 import { layoutState } from "./LayoutState";
 import { AboutBackdrop } from "./objects/AboutBackdrop";
+import { BlackHole } from "./objects/BlackHole";
+import { NightSky } from "./objects/NightSky";
 import { Planet } from "./objects/Planet";
+import { LensPass, createLensState } from "./post/LensPass";
 import { pointerState, trackPointer } from "./PointerState";
 import { SceneManager } from "./SceneManager";
 import { scrollState } from "./ScrollState";
@@ -21,16 +24,20 @@ export function startScene(options: StartSceneOptions): SceneManager {
   document.body.prepend(canvas);
 
   try {
+    const lens = createLensState();
     const manager = new SceneManager(canvas, {
       scroll: scrollState,
       pointer: pointerState,
       layout: layoutState,
       reducedMotion: options.reducedMotion,
+      post: new LensPass(lens),
       onContextLost: options.onContextLost,
     });
     if (!options.reducedMotion) trackPointer();
     manager.add(new AboutBackdrop());
+    manager.add(new NightSky(manager.quality.current));
     manager.add(new Planet(manager.renderer, manager.quality.current));
+    manager.add(new BlackHole(manager.quality.current, lens));
     manager.start();
     return manager;
   } catch (error) {

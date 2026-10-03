@@ -1,5 +1,6 @@
 import type { Rect } from "./LayoutState";
 import type { FrameContext } from "./SceneManager";
+import { finaleSpan, finaleStart } from "./finale";
 import { SECTION_IDS, type SectionId } from "./ScrollState";
 
 /**
@@ -17,7 +18,7 @@ import { SECTION_IDS, type SectionId } from "./ScrollState";
  * - Con reduced motion no hay interpolación: se usa la fila `rest` de la sección activa.
  */
 
-type Anchor = "hero" | "about" | "view";
+type Anchor = "hero" | "about" | "cta" | "view";
 
 export interface PoseSpec {
   anchor: Anchor;
@@ -38,13 +39,16 @@ export interface PoseSpec {
 }
 
 interface KeySpec {
-  target: SectionId | "about";
+  /** `finale`: el tramo del cierre (ver `finale.ts`); su `t` es la fracción de ese tramo. */
+  target: SectionId | "about" | "finale";
   /** Progreso del objetivo; `start` es scroll 0. */
   t: number | "start";
   pose: PoseSpec;
   rest?: boolean;
   /** `false`: la pose del ancla se toma en ese scroll y luego queda fija en pantalla. */
   follow?: false;
+  /** Cambia de ancla viajando (sin la regla de radio cero): la caída hacia el agujero negro. */
+  travel?: true;
 }
 
 const base = { axis: 0.32, ringTilt: 0, ringRoll: 0, turn: 0, shadow: 1, dust: 1, panel: 0 };
@@ -83,9 +87,19 @@ const WIDE: KeySpec[] = [
     target: "blog", t: 0.5, rest: true,
     pose: { anchor: "view", x: 0.6, y: 0.42, r: 0.45, axis: 0.35, ringTilt: 0.15, ringRoll: 0, turn: 3.8, shadow: 0.5, dust: 0.5, panel: 0 },
   },
+  // Cierre: el planeta sigue en su margen y cae al agujero negro del CTA, encogiéndose hasta 0
+  // mientras acelera su giro. En reposo (reduced motion) ya no está.
   {
-    target: "contacto", t: 0.3, rest: true,
-    pose: { anchor: "view", x: 0.6, y: 0.42, r: 0.45, axis: 0.35, ringTilt: 0.15, ringRoll: 0, turn: 4, shadow: 0.5, dust: 0.5, panel: 0 },
+    target: "finale", t: 0,
+    pose: { anchor: "view", x: 0.6, y: 0.42, r: 0.45, axis: 0.35, ringTilt: 0.15, ringRoll: 0, turn: 3.9, shadow: 0.5, dust: 0.5, panel: 0 },
+  },
+  {
+    target: "finale", t: 0.5, travel: true,
+    pose: { anchor: "cta", x: 0, y: 0, r: 0, axis: 0.9, ringTilt: 0.5, ringRoll: 0.5, turn: 7, shadow: 0, dust: 0, panel: 0 },
+  },
+  {
+    target: "finale", t: 1, rest: true,
+    pose: { anchor: "cta", x: 0, y: 0, r: 0, axis: 0.9, ringTilt: 0.5, ringRoll: 0.5, turn: 7, shadow: 0, dust: 0, panel: 0 },
   },
 ];
 
@@ -120,7 +134,7 @@ const NARROW: KeySpec[] = [
   { target: "proyectos", t: 0.5, rest: true, pose: away(3) },
   { target: "areas", t: 0.5, rest: true, pose: away(3.4) },
   { target: "blog", t: 0.5, rest: true, pose: away(3.8) },
-  { target: "contacto", t: 0.3, rest: true, pose: away(4) },
+  { target: "finale", t: 0.5, rest: true, pose: away(4) },
 ];
 
 /** Coincide con el `72rem` de `.cards-grid--4` en `sections.css`. */
@@ -148,6 +162,7 @@ const FIELDS = 10;
 const VIEW = 0;
 const HERO = 1;
 const ABOUT = 2;
+const CTA = 3;
 const MAX_KEYS = Math.max(WIDE.length, NARROW.length);
 
 export class Choreography {
@@ -158,6 +173,7 @@ export class Choreography {
   private readonly keyScroll = new Float32Array(MAX_KEYS);
   private readonly keyPose = new Float32Array(MAX_KEYS * FIELDS);
   private readonly keyAnchor = new Uint8Array(MAX_KEYS);
+  private readonly keyTravel = new Uint8Array(MAX_KEYS);
   private readonly restBySection = new Int8Array(SECTION_IDS.length);
   private keys: KeySpec[] = WIDE;
   private worldPerPx = 0;
@@ -201,7 +217,9 @@ export class Choreography {
       previous = scroll;
       this.keyScroll[i] = scroll;
       const anchor = key.pose.anchor;
-      this.keyAnchor[i] = anchor === "view" || key.follow === false ? VIEW : anchor === "hero" ? HERO : ABOUT;
+      this.keyAnchor[i] =
+        anchor === "view" || key.follow === false ? VIEW : anchor === "hero" ? HERO : anchor === "about" ? ABOUT : CTA;
+      this.keyTravel[i] = key.travel ? 1 : 0;
       this.resolve(key.pose, scroll, ctx, this.pose);
       this.write(i);
     });
@@ -209,7 +227,7 @@ export class Choreography {
     SECTION_IDS.forEach((id, s) => {
       let found = 0;
       this.keys.forEach((key, i) => {
-        const section = key.target === "about" ? "sobre" : key.target;
+        const section = key.target === "about" ? "sobre" : key.target === "finale" ? "contacto" : key.target;
         if (section === id && key.rest) found = i;
       });
       this.restBySection[s] = found;
@@ -219,6 +237,7 @@ export class Choreography {
   private scrollAt(key: KeySpec, ctx: FrameContext): number {
     if (key.t === "start") return 0;
     const vh = ctx.layout.viewportHeight;
+    if (key.target === "finale") return finaleStart(ctx.layout) + key.t * finaleSpan(ctx.layout);
     if (key.target === "about") {
       const panel = ctx.layout.about;
       const top = panel.y - panel.height / 2;
@@ -238,8 +257,9 @@ export class Choreography {
       out.x = spec.x * ctx.viewHalfWidth;
       out.y = spec.y * ctx.viewHalfHeight;
     } else {
-      const rect: Rect = spec.anchor === "hero" ? ctx.layout.hero : ctx.layout.about;
-      const fit = spec.anchor === "hero" ? rect.size * HERO_FIT : rect.size / ABOUT_FIT;
+      const rect: Rect =
+        spec.anchor === "hero" ? ctx.layout.hero : spec.anchor === "about" ? ctx.layout.about : ctx.layout.cta;
+      const fit = spec.anchor === "about" ? rect.size / ABOUT_FIT : rect.size * HERO_FIT;
       out.r = spec.r * fit * worldPerPx;
       out.x = (rect.x - ctx.viewportWidth / 2) * worldPerPx;
       out.y = (ctx.viewportHeight / 2 - (rect.y - scroll)) * worldPerPx;
@@ -291,7 +311,7 @@ export class Choreography {
     const p = this.pose;
     // Entre anclas distintas, si un extremo tiene radio 0 el planeta crece o se encoge en el sitio
     // del otro: así no cruza el texto para cambiar de ancla.
-    const switching = this.keyAnchor[a] !== this.keyAnchor[b];
+    const switching = this.keyAnchor[a] !== this.keyAnchor[b] && this.keyTravel[b] === 0;
     if (switching && ra === 0) {
       p.x = bx;
       p.y = by;

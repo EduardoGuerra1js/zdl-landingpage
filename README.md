@@ -28,7 +28,7 @@ src/
   main.ts
   styles/       tokens, base, secciones
   ui/           scroll (Lenis + ScrollTrigger); luego nav, reveals, microinteracciones
-  scene/        SceneManager, QualityManager, ScrollState, LayoutState, PointerState, objects/, shaders/, textures/
+  scene/        SceneManager, QualityManager, ScrollState, LayoutState, PointerState, choreography, finale, objects/ (Planet, NightSky, BlackHole…), post/ (LensPass), shaders/, textures/
 scripts/        generador del fallback del planeta
 public/
   brand/        SVG de marca (logo, isotipo, logotipo), sin metadatos C2PA

@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Scene, WebGLRenderer, type Object3D } from "three";
+import { PerspectiveCamera, Scene, WebGLRenderer, type Camera, type Object3D } from "three";
 import type { LayoutData } from "./LayoutState";
 import type { PointerData } from "./PointerState";
 import { QualityManager, type QualityParams } from "./QualityManager";
@@ -40,6 +40,19 @@ export interface SceneObject {
   dispose(): void;
 }
 
+/**
+ * Pase de postprocesado opcional. Si `active` es true, dibuja él la escena (normalmente a un render
+ * target y luego a pantalla); si no, la escena va directo al lienzo y `release` libera sus recursos.
+ * `active` se lee después de `update`, así que los objetos pueden encenderlo en el mismo frame.
+ */
+export interface PostPass {
+  readonly active: boolean;
+  render(renderer: WebGLRenderer, scene: Scene, camera: Camera): void;
+  onQualityChange?(params: Readonly<QualityParams>): void;
+  release?(): void;
+  dispose(): void;
+}
+
 export type PauseReason = "hidden" | "offscreen" | "context-lost";
 
 export interface SceneManagerOptions {
@@ -47,6 +60,7 @@ export interface SceneManagerOptions {
   pointer: Readonly<PointerData>;
   layout: Readonly<LayoutData>;
   reducedMotion: boolean;
+  post?: PostPass;
   onContextLost?: () => void;
 }
 
@@ -88,6 +102,7 @@ export class SceneManager {
     this.quality = new QualityManager(this.renderer.getContext());
     this.renderer.setPixelRatio(this.quality.current.pixelRatio);
     this.quality.onChange(this.handleQualityChange);
+    options.post?.onQualityChange?.(this.quality.current);
 
     this.camera.position.z = CAMERA_Z;
 
@@ -152,6 +167,7 @@ export class SceneManager {
     this.canvas.removeEventListener("webglcontextlost", this.handleContextLost);
     for (const object of this.objects) object.dispose();
     this.objects.length = 0;
+    this.options.post?.dispose();
     this.renderer.dispose();
   }
 
@@ -174,7 +190,13 @@ export class SceneManager {
     }
 
     for (const object of this.objects) object.update(ctx);
-    this.renderer.render(this.scene, this.camera);
+    const post = this.options.post;
+    if (post?.active) {
+      post.render(this.renderer, this.scene, this.camera);
+    } else {
+      post?.release?.();
+      this.renderer.render(this.scene, this.camera);
+    }
     this.needsRender = false;
     this.renderedScrollVersion = ctx.scroll.version;
     this.renderedLayoutVersion = ctx.layout.version;
@@ -205,6 +227,7 @@ export class SceneManager {
     this.renderer.setPixelRatio(params.pixelRatio);
     this.renderer.setSize(this.width, this.height, false);
     for (const object of this.objects) object.onQualityChange?.(params);
+    this.options.post?.onQualityChange?.(params);
     this.needsRender = true;
   };
 
