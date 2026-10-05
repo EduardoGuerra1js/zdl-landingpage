@@ -748,6 +748,14 @@ html.nav-open {
   }
 }
 
+.project-card__logo {
+  align-self: flex-start;
+  width: min(11.25rem, 100%);
+  min-width: 6rem;
+  height: auto;
+  aspect-ratio: 5 / 1;
+}
+
 .project-card__media {
   aspect-ratio: 16 / 10;
   margin-bottom: var(--space-2);
@@ -832,17 +840,37 @@ html.nav-open {
   }
 }
 
-/* ---------- 8. Blog ---------- */
+/* ---------- 7. Servicios ---------- */
 
-.post-card h3 {
-  font-size: clamp(1.1875rem, 1.125rem + 0.28vw, 1.375rem);
-  line-height: 1.25;
+.offer-list {
+  display: grid;
+  gap: var(--space-6) var(--space-5);
 }
 
-.post-card__date {
-  margin-top: auto;
-  padding-top: var(--space-3);
+.offer-list p,
+.offer-note {
   color: var(--muted);
+}
+
+.offer-note {
+  max-width: var(--measure);
+  margin-top: var(--space-6);
+}
+
+.offer-cta {
+  margin-top: var(--space-5);
+}
+
+@media (min-width: 40rem) {
+  .offer-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 72rem) {
+  .offer-list {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 /* ---------- 9. Isla oscura: CTA + footer ---------- */
@@ -1049,6 +1077,22 @@ html.nav-open {
 .cta__email:hover::after,
 .cta__email:focus-visible::after {
   opacity: 1;
+}
+
+.site-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.site-footer__links a {
+  color: var(--dark-ink);
+  text-decoration: none;
+}
+
+.site-footer__links a:hover,
+.site-footer__links a:focus-visible {
+  text-decoration: underline;
 }
 
 .site-footer__legal {

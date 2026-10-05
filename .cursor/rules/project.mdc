@@ -16,7 +16,7 @@ El proyecto se construye por fases (0 a 7). El registro vive en [PHASES.md](../.
 
 ## Qué es
 
-Landing page **one page** de **Zero Day Labs**, un estudio independiente de investigación y desarrollo de tecnología. El contenido gira en torno a **realidad aumentada (AR) y 3D**: prototipos, entornos 3D, gemelos digitales, interfaces espaciales y experimentación en el mundo real. Idioma: español. Tono: curioso, claro, ambicioso, sin jerga vacía.
+Landing page **one page** de **Zero Day Labs**, un estudio independiente de investigación y desarrollo de tecnología. El contenido público son tres productos — **HandViewer**, **HumanViewer** y el **Traductor LESSA** — más software a la medida que los financia. Idioma: español. Tono: curioso, claro, ambicioso, sin jerga vacía. No se publica el estado interno del laboratorio (versiones, auditorías, lo que falta, umbrales provisionales ni el NDA).
 
 ## Referencias
 
@@ -27,15 +27,15 @@ Landing page **one page** de **Zero Day Labs**, un estudio independiente de inve
 
 ## Secciones (en orden)
 
-1. Hero: eyebrow, titular "Diseñamos el futuro desde el laboratorio.", subtítulo, dos botones, planeta 3D.
-2. Franja de 4 pilares (investigación aplicada, prototipos funcionales, equipos multidisciplinarios, impacto sostenible).
-3. Qué hacemos: 4 tarjetas.
-4. Sobre Zero Day Labs: texto, 3 métricas (12+ proyectos, 6 áreas, 24/7), panel oscuro con planeta.
-5. Proceso: Explorar, Diseñar, Construir, Lanzar (secuencia real).
-6. Proyectos destacados: 3 tarjetas (Interfaces del futuro, Sistemas orbitales, Hábitats modulares).
-7. Áreas que exploramos: 8 chips (IA, robótica, hardware embebido, computación espacial, datos, interfaces, energía, biotecnología).
-8. Blog: 3 tarjetas (copy placeholder específico de AR/3D).
-9. CTA final oscuro con agujero negro + footer. Contacto: `mailto:hola@zerodaylabs.com`, sin formulario en v1.
+1. Hero: eyebrow "Laboratorio", titular "Diseñamos el futuro desde el laboratorio.", subtítulo (cámara, celular, laptop), dos botones, planeta 3D.
+2. Franja de 4 pilares (lo que ya tienes, hecho para durar, se aprende haciendo, impacto real).
+3. Qué hacemos: 4 tarjetas (manos, cuerpo, LESSA, software a la medida).
+4. Sobre: origen del nombre (metáfora, no ciberseguridad), equipo, métricas 3 / 1 / 0, panel oscuro con planeta.
+5. Proceso: Explorar, Diseñar, Construir, Lanzar. Sin plazos inventados.
+6. Productos (`#proyectos`): HandViewer (lockup negro), HumanViewer, Traductor LESSA.
+7. Servicios (`#servicios`): sitios, sistemas, CRM, datos, automatización. INVEX es una línea, no una tarjeta.
+8. Áreas: visión por computadora, realidad aumentada, interfaces sin contacto, lengua de señas, software a la medida.
+9. CTA oscuro con agujero negro + footer. Contacto: `mailto:hola@zerodaylabs.com` e Instagram `@zerodaylabs.sv`. Sin formulario en v1. Sin blog hasta que haya notas reales. LinkedIn solo cuando exista el perfil.
 
 ## Marca y diseño (modo claro es el principal)
 

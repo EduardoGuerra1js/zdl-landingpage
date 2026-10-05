@@ -80,18 +80,18 @@ const WIDE: KeySpec[] = [
     pose: { anchor: "view", x: 0.6, y: 0.45, r: 0.45, axis: 0.25, ringTilt: 0.05, ringRoll: 0.08, turn: 3, shadow: 0.5, dust: 0.5, panel: 0 },
   },
   {
+    target: "servicios", t: 0.5, rest: true,
+    pose: { anchor: "view", x: 0.61, y: 0.52, r: 0.38, axis: 0.32, ringTilt: 0.18, ringRoll: 0.04, turn: 3.2, shadow: 0.45, dust: 0.45, panel: 0 },
+  },
+  {
     target: "areas", t: 0.5, rest: true,
     pose: { anchor: "view", x: 0.62, y: 0.68, r: 0.32, axis: 0.4, ringTilt: 0.3, ringRoll: 0, turn: 3.4, shadow: 0.4, dust: 0.4, panel: 0 },
   },
-  {
-    target: "blog", t: 0.5, rest: true,
-    pose: { anchor: "view", x: 0.6, y: 0.42, r: 0.45, axis: 0.35, ringTilt: 0.15, ringRoll: 0, turn: 3.8, shadow: 0.5, dust: 0.5, panel: 0 },
-  },
-  // Cierre: el planeta sigue en su margen y cae al agujero negro del CTA, encogiéndose hasta 0
-  // mientras acelera su giro. En reposo (reduced motion) ya no está.
+  // Cierre: el planeta sigue en el margen de Áreas y cae al agujero negro del CTA, encogiéndose
+  // hasta 0 mientras acelera su giro. En reposo (reduced motion) ya no está.
   {
     target: "finale", t: 0,
-    pose: { anchor: "view", x: 0.6, y: 0.42, r: 0.45, axis: 0.35, ringTilt: 0.15, ringRoll: 0, turn: 3.9, shadow: 0.5, dust: 0.5, panel: 0 },
+    pose: { anchor: "view", x: 0.62, y: 0.68, r: 0.32, axis: 0.4, ringTilt: 0.3, ringRoll: 0, turn: 3.5, shadow: 0.4, dust: 0.4, panel: 0 },
   },
   {
     target: "finale", t: 0.5, travel: true,
@@ -132,8 +132,8 @@ const NARROW: KeySpec[] = [
   },
   { target: "proceso", t: 0.5, rest: true, pose: away(2.4) },
   { target: "proyectos", t: 0.5, rest: true, pose: away(3) },
+  { target: "servicios", t: 0.5, rest: true, pose: away(3.2) },
   { target: "areas", t: 0.5, rest: true, pose: away(3.4) },
-  { target: "blog", t: 0.5, rest: true, pose: away(3.8) },
   { target: "finale", t: 0.5, rest: true, pose: away(4) },
 ];
 

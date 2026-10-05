@@ -13,8 +13,8 @@ export const SECTION_IDS = [
   "sobre",
   "proceso",
   "proyectos",
+  "servicios",
   "areas",
-  "blog",
   "contacto",
 ] as const;
 
