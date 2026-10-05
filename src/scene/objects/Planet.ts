@@ -9,8 +9,6 @@ import {
   ShaderMaterial,
   SphereGeometry,
   Vector3,
-  type WebGLRenderer,
-  type WebGLRenderTarget,
 } from "three";
 import { Choreography } from "../choreography";
 import type { QualityParams } from "../QualityManager";
@@ -23,7 +21,6 @@ import ringFrag from "../shaders/ring.frag?raw";
 import ringVert from "../shaders/ring.vert?raw";
 import shadowFrag from "../shaders/shadow.frag?raw";
 import surfaceVert from "../shaders/surface.vert?raw";
-import { bakePlanetTexture } from "../textures/bakePlanetTexture";
 import { Dust } from "./Dust";
 
 /**
@@ -69,23 +66,13 @@ export class Planet implements SceneObject {
 
   private readonly geometries: { dispose(): void }[] = [];
   private readonly materials: ShaderMaterial[] = [];
-  private readonly uMap = { value: null as WebGLRenderTarget["texture"] | null };
   private readonly lightDir = { value: new Vector3(-0.55, 0.62, 0.56).normalize() };
   private readonly rimDir = { value: new Vector3(0.88, -0.42, -0.22).normalize() };
 
-  private bake: WebGLRenderTarget;
-  private bakedSize: number;
   private parallaxX = 0;
   private parallaxY = 0;
 
-  constructor(
-    private readonly renderer: WebGLRenderer,
-    quality: Readonly<QualityParams>,
-  ) {
-    this.bakedSize = quality.textureSize;
-    this.bake = bakePlanetTexture(renderer, this.bakedSize);
-    this.uMap.value = this.bake.texture;
-
+  constructor(quality: Readonly<QualityParams>) {
     this.root.add(this.createShadow());
 
     this.body = new Mesh(
@@ -93,7 +80,7 @@ export class Planet implements SceneObject {
       this.material({
         vertexShader: surfaceVert,
         fragmentShader: planetFrag,
-        uniforms: { uMap: this.uMap, uLightDir: this.lightDir, uRimDir: this.rimDir, uEnv: this.uEnv },
+        uniforms: { uLightDir: this.lightDir, uRimDir: this.rimDir, uEnv: this.uEnv },
       }),
     );
     this.spin.rotation.z = 0.32;
@@ -168,19 +155,12 @@ export class Planet implements SceneObject {
 
   onQualityChange(params: Readonly<QualityParams>): void {
     this.dust.setQuality(params);
-    if (params.textureSize === this.bakedSize) return;
-    const previous = this.bake;
-    this.bakedSize = params.textureSize;
-    this.bake = bakePlanetTexture(this.renderer, this.bakedSize);
-    this.uMap.value = this.bake.texture;
-    previous.dispose();
   }
 
   dispose(): void {
     for (const geometry of this.geometries) geometry.dispose();
     for (const material of this.materials) material.dispose();
     this.dust.dispose();
-    this.bake.dispose();
   }
 
   /** Mancha gaussiana detrás y debajo del cuerpo: la sombra que cae sobre el papel. */
@@ -238,7 +218,7 @@ export class Planet implements SceneObject {
         transparent: true,
         depthWrite: false,
         blending: AdditiveBlending,
-        uniforms: { uMap: this.uMap, uScan: this.uScan, uPanel: this.uPanel },
+        uniforms: { uScan: this.uScan, uPanel: this.uPanel },
       }),
     );
     hologram.renderOrder = 5;

@@ -9,8 +9,8 @@ import { SceneManager } from "./SceneManager";
 import { scrollState } from "./ScrollState";
 
 /**
- * Entrada del chunk diferido (incluye Three.js). `main.ts` lo carga con `import()` tras el
- * primer pintado. Crea el canvas, monta la escena y arranca el bucle. Lanza si WebGL falla.
+ * Entrada del chunk diferido (incluye Three.js). `main.ts` lo pide en paralelo al arranque.
+ * Crea el canvas, monta la escena y arranca el bucle. Lanza si WebGL falla.
  */
 export interface StartSceneOptions {
   reducedMotion: boolean;
@@ -36,7 +36,7 @@ export function startScene(options: StartSceneOptions): SceneManager {
     if (!options.reducedMotion) trackPointer();
     manager.add(new AboutBackdrop());
     manager.add(new NightSky(manager.quality.current));
-    manager.add(new Planet(manager.renderer, manager.quality.current));
+    manager.add(new Planet(manager.quality.current));
     manager.add(new BlackHole(manager.quality.current, lens));
     manager.start();
     return manager;

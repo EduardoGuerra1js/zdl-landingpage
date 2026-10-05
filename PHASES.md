@@ -46,7 +46,7 @@ Estados: `Pendiente` · `En curso` · `Completada`.
 | 4 | Coreografía del scroll | Sonnet 5.5 | Completada |
 | 5 | CTA y agujero negro | Opus 5.5 (rescate: Opus 5 Thinking High) | Completada |
 | 6 | UX/UI, microinteracciones y pulido | Sonnet 5.5 | Completada |
-| 7 | Auditoría de rendimiento | GPT 5.6 | Pendiente |
+| 7 | Auditoría de rendimiento | GPT 5.6 | Completada |
 
 Decisiones transversales registradas aquí a medida que se toman:
 
@@ -59,12 +59,12 @@ Decisiones transversales registradas aquí a medida que se toman:
 - **Logo en el sitio:** en línea como `<symbol id="zdl-mark">` + `<text>` con Inter autoalojada, porque los SVG de marca tienen el texto como texto editable y dentro de `<img>` no usarían la fuente de la página. Color por variables `--logo-ink`/`--logo-accent` (clases `.logo--light` y `.logo--dark`); la geometría no se toca.
 - **Tokens extra para islas oscuras:** `--dark-ink #F7F6FC` (18.6:1), `--dark-muted #B9B9E3` (10.6:1), `--dark-accent #A5A5FF` (9:1) sobre `--space`. `--accent` sobre `--space` da solo ~4:1, así que no se usa para texto pequeño en oscuro.
 - **Microinteracciones:** `--dur-fast` (150 ms), `--dur-base` (220 ms) y `--ease-out`. Solo `transform` y `opacity`. El cursor magnético es el botón «Ver proyectos» del hero (escritorio, puntero fino). `24/7` no se anima: no es una cuenta.
-- **Carga del 3D:** `main.ts` (bundle inicial: CSS + GSAP + ScrollTrigger + Lenis, ~51 KB gzip) y `import("./scene")` tras `load` + `requestIdleCallback`. Three.js y todo `src/scene/` salvo `ScrollState`/`PointerState` viven en el chunk diferido `scene-*.js`.
+- **Carga del 3D:** `main.ts` pide `import("./scene")` en paralelo al arranque (chunk diferido). El marcador CSS del hero no se pinta con JS (solo reserva el hueco) para no mostrar un planeta distinto antes del canvas.
 - **Estados en `<html>`:** `.has-webgl` (canvas activo), `.no-webgl` (fallback) y `data-quality="high|medium|low"`. Son el punto de enganche del CSS que dependa del 3D.
 - **Un solo rAF por subsistema:** Lenis avanza en `gsap.ticker`; la escena tiene su propio rAF en `SceneManager` (no depende de GSAP).
 - **Reduced motion:** sin Lenis (scroll nativo) y la escena con tiempo congelado, renderizando solo cuando cambian el scroll, el layout, el tamaño o la calidad (desde la Fase 3; antes, solo al cambiar la sección activa). Se lee una vez al cargar.
 - **Planeta:** variante **obsidiana pulida** elegida frente a "roca lunar" (la roca gris sobre papel claro tenía poco contraste y necesitaba texturas grandes). La luna sí es de piedra mate, para contrastar materiales.
-- **Texturas procedurales horneadas en GPU:** el relieve del planeta se genera una vez en un render target equirectangular (`textureSize × textureSize/2`) con ruido 3D. No hay WebP de textura en el bundle y el costo por frame es cero. Se rehornea solo si baja `textureSize`.
+- **Superficie procedural sin textura:** el planeta usa vetas analíticas baratas en `planet.frag` y el holograma reutiliza la misma función para sus contornos. Se eliminó el horneado GPU de arranque y sus shaders de ruido: evita un bloqueo de varios segundos bajo CPU 4× sin añadir una textura descargable.
 - **GLSL:** archivos `.glsl/.vert/.frag` en `src/scene/shaders/`, importados con `?raw` de Vite (sin plugins). Los colores de los shaders son sRGB directos: los `ShaderMaterial` no incluyen conversión de espacio de color, y las constantes se escriben en GLSL para no pasar por la gestión de color de `THREE.Color`.
 - **Alinear 3D con el DOM:** `ui/scroll.ts` mide en cada `refresh` de ScrollTrigger los rectángulos que la escena necesita (`layoutState`, en px de documento) y escribe `scrollState.y`. La escena convierte px a mundo con `FrameContext.viewportWidth/Height`. Nunca mide el DOM en el bucle.
 - **Coreografía en una tabla:** todas las poses del planeta por sección están en `src/scene/choreography.ts` (`WIDE` ≥ 1152 px, `NARROW` por debajo). Se ajustan ahí, sin tocar `Planet.ts`. Mezcla lineal en espacio de scroll.
@@ -75,7 +75,8 @@ Decisiones transversales registradas aquí a medida que se toman:
 - **Velo anclado a la página, no al tiempo:** el paso de claro a `#07061A` es un degradado vertical dibujado en el canvas (`NightSky`) cuya posición sale del borde superior de `#contacto` menos el scroll. Con WebGL, `.scene-ready .dark-island` es transparente. No hay tween que sincronizar y la legibilidad se puede calcular por posición.
 - **Tramo del cierre compartido:** `src/scene/finale.ts` define el tramo de scroll (arranca con el borde de la isla al 72 % del viewport; termina al 85 % del recorrido hasta el final de la página). Lo usan la coreografía del planeta (`target: "finale"`), el agujero negro y, por posición, el cielo.
 - **Superficies en el canvas con profundidad:** el velo y las estrellas se dibujan en `z = 0.999/0.998` (fondo del buffer de profundidad) con `depthTest`, para que el cuerpo opaco del planeta no quede tapado. El horizonte del agujero negro es transparente con `depthWrite` para ocultar la mitad trasera del disco.
-- **Postprocesado solo cuando hace falta:** `PostPass` en `SceneManager`. `LensPass` (desktop + calidad alta) reserva un render target MSAA ×4 solo mientras el agujero negro está en pantalla; si no, la escena va directo al lienzo y el target se libera.
+- **Postprocesado solo cuando hace falta:** `PostPass` en `SceneManager`. `LensPass` (desktop + calidad alta) reserva un render target al 75 % por eje y MSAA ×2 solo mientras el agujero negro está en pantalla; si no, la escena va directo al lienzo y el target se libera.
+- **Pausa fuera de escena:** `SceneManager` detiene su rAF cuando ningún objeto está visible y lo reactiva con scroll o resize; con reduced motion también se detiene tras renderizar el estado estático.
 - **Calidad:** `QualityParams` gana `stars` (700/400/200). `bloom` se documenta como "permite el pase de lente".
 
 ---
@@ -513,6 +514,35 @@ _Alcance:_ jerarquía y espaciado en las 9 secciones; microinteracciones; tilt 3
 ---
 
 ### Fase 7 — Auditoría de rendimiento · GPT 5.6
-**Estado:** Pendiente
+**Estado:** Completada · 2026-10-04
 
 _Alcance:_ Lighthouse móvil (Performance, LCP, CLS, TBT); perfilado del render; verificar calidad adaptativa con CPU 4x más lenta; carga diferida, peso de texturas y bundle; reduced-motion y fallback sin WebGL; informe antes/después con números.
+
+**Resumen de cambios**
+- `src/main.ts` — la escena ya no crea un contexto WebGL de sondeo. El chunk 3D se pide en paralelo al arranque. El marcador CSS del hero se oculta con JS para no mostrar un planeta distinto antes del canvas.
+- `src/scene/objects/Planet.ts`, `src/scene/shaders/planet.frag`, `hologram.frag`, `src/scene/index.ts` — se sustituyó el mapa procedural horneado al arrancar por vetas analíticas en los shaders de superficie y holograma. Se borraron `textures/bakePlanetTexture.ts`, `shaders/bake.frag` y `shaders/noise.glsl`; no hay textura del planeta que descargar ni un pase de horneado que bloquee el hilo.
+- `src/scene/SceneManager.ts` — el rAF se pausa con el motivo `offscreen` cuando no queda ningún objeto visible y despierta con scroll o resize. En reduced motion también se detiene una vez renderizado el estado estático.
+- `src/scene/post/LensPass.ts` — el target temporal de la lente baja a 75 % por eje y MSAA ×2 (56 % de los píxeles y 50 % de las muestras respecto a antes); sigue existiendo solo en escritorio, calidad alta y mientras el agujero negro está visible.
+- `README.md` — arquitectura sin `textures/` y contrato de activación diferida actualizado.
+
+**Informe antes / después**
+- Lighthouse móvil, Lighthouse 13.0.1 + Chrome 154, servidor de producción local:
+  - Antes: Performance **68**, LCP **1.87 s**, CLS **0**, TBT **6.06 s**, Speed Index **3.81 s**, TTI **8.88 s**, hilo principal **10.48 s**.
+  - Después: Performance **98**, LCP **1.87 s**, CLS **0**, TBT **0.12 s**, Speed Index **1.74 s**, TTI **1.87 s**, hilo principal **0.82 s**. Una corrida de control con Chrome 145 dio Performance 100, LCP 1.74 s y TBT 0.01 s.
+- Build final: JS inicial **53.86 KB gzip**, CSS **6.06 KB gzip**, HTML **8.92 KB gzip**, escena diferida **144.70 KB gzip**. El HTML no precarga la escena y Lighthouse no la solicita durante la ventana crítica.
+- Perfil del render: máximo teórico de ~16 draw calls con planeta, cielo, agujero negro y pase de lente; no se encontraron asignaciones por frame en los `update`. El horneado inicial pasó de **7.2 s de scripting** en la medición base a no existir; la inicialización de escena medida después quedó fuera de la ruta crítica.
+- Calidad adaptativa: en viewport móvil 390×844, DPR 3 y CPU 4×, el nivel inicial fue `medium` (buffer 585×1266). Con carga sostenida a ~37 FPS bajó a `low` y el buffer pasó a 390×844; a 60 FPS se mantuvo en `medium`.
+- Reduced motion: sin Lenis, 0 animaciones en ejecución, todos los revelados visibles, contadores finales y 4 pasos alcanzados. Fallback: la pérdida de contexto deja `.no-webgl`, elimina el canvas y muestra `public/fallback/planet.webp`.
+- Revisión visual: hero móvil, planeta procedural, holograma de “Sobre”, CTA móvil y lente de escritorio revisados sin errores de shader ni regresiones de composición.
+
+**Desviaciones del plan**
+- Lighthouse CLI necesitó un Chrome for Testing temporal porque no había Chrome/Edge detectable en el sistema; no se añadió ninguna dependencia al proyecto.
+- La auditoría automatizada no sustituye una prueba térmica en un teléfono físico. `100lvh`, consumo sostenido de GPU y la lente en una pantalla 4K siguen requiriendo hardware real.
+- `QualityParams.textureSize` se conserva por compatibilidad del contrato de calidad, aunque el planeta ya no crea texturas; no aumenta el bundle ni el trabajo por frame.
+
+**Handoff posterior / mantenimiento**
+- La landing queda lista para revisión final y despliegue; no hay una Fase 8 definida.
+- Antes de publicar, revisar manualmente en un teléfono Android/iOS de gama media: recorrido completo, barra dinámica del navegador, temperatura tras 2–3 minutos y reposo del agujero negro.
+- En un monitor 4K, confirmar que la lente al 75 % mantiene el look esperado. Si hubiera presión de GPU, el siguiente recorte seguro es 50 % por eje o desactivar el pase por encima de un límite de píxeles.
+- Corrección posterior: diferir el 3D 3.5 s dejaba el planeta CSS visible; se revirtió. El hueco del hero se reserva sin pintar el marcador.
+- Corrección posterior (responsive): los cambios de layout ya no coinciden en el mismo ancho. Hero a 800 px, "Sobre" a 736 px, áreas a 896 px, nav a 960 px, CTA a 1024 px, proyectos/blog a 3 columnas en 1088 px, "Qué hacemos" a 4 columnas en 1152 px (junto con la coreografía ancha del planeta), proceso a 1248 px y pilares a 4 columnas en 1344 px. El planeta, el agujero negro y el logo cambian de tamaño con el ancho, no de golpe en el breakpoint. Las rejillas de 4 piezas no pasan por 3 columnas (esa fila dejaba una tarjeta sola y el alto subía al ensanchar).

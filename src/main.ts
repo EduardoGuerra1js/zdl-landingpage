@@ -10,7 +10,8 @@ import { initScroll } from "./ui/scroll";
 
 /**
  * Arranque: el texto pinta sin JS de 3D. El scroll (Lenis + ScrollTrigger) se cablea de inmediato;
- * Three.js llega en un chunk aparte tras `load` y un hueco ocioso, y el canvas entra con fade.
+ * el chunk de Three.js se pide en paralelo (no espera a `load`) y el canvas entra con fade.
+ * El marcador CSS del hero queda invisible con JS hasta `.has-webgl` o `.no-webgl`.
  * Estados en <html>: `.has-webgl` (canvas activo), `.scene-ready` (terminó el fundido: la escena
  * ya dibuja lo que sustituye al CSS, como el fondo del panel de "Sobre") o `.no-webgl`, y
  * `data-quality="high|medium|low"` con el nivel vigente (útil para recortar CSS caro en "low").
@@ -18,30 +19,18 @@ import { initScroll } from "./ui/scroll";
 
 const root = document.documentElement;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sceneModule = import("./scene");
 
 const lenis = initScroll(reducedMotion);
 initProcessOrbit(reducedMotion);
 initReveals(reducedMotion);
 initNav(lenis);
 initMicrointeractions(reducedMotion);
-afterFirstPaint(bootScene);
-
-function afterFirstPaint(callback: () => void): void {
-  const schedule = (): void => {
-    if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(callback, { timeout: 2000 });
-    else window.setTimeout(callback, 200);
-  };
-  if (document.readyState === "complete") schedule();
-  else window.addEventListener("load", schedule, { once: true });
-}
+void bootScene();
 
 async function bootScene(): Promise<void> {
-  if (!supportsWebGL()) {
-    useFallback();
-    return;
-  }
   try {
-    const { startScene } = await import("./scene");
+    const { startScene } = await sceneModule;
     const manager = startScene({ reducedMotion, onContextLost: useFallback });
     root.dataset.quality = manager.quality.current.level;
     manager.quality.onChange((params) => {
@@ -54,24 +43,15 @@ async function bootScene(): Promise<void> {
   }
 }
 
-function supportsWebGL(): boolean {
-  try {
-    const probe = document.createElement("canvas");
-    const gl = probe.getContext("webgl2") ?? probe.getContext("webgl");
-    gl?.getExtension("WEBGL_lose_context")?.loseContext();
-    return gl !== null;
-  } catch {
-    return false;
-  }
-}
-
 function reveal(canvas: HTMLCanvasElement): void {
-  const placeholder = document.querySelector(".hero__visual .planet-ph");
   const duration = reducedMotion ? 0 : 0.8;
   root.classList.add("has-webgl");
-  const tl = gsap.timeline({ onComplete: () => root.classList.add("scene-ready") });
-  tl.to(canvas, { autoAlpha: 1, duration, ease: "power1.out" }, 0);
-  if (placeholder) tl.to(placeholder, { autoAlpha: 0, duration, ease: "power1.out" }, 0);
+  gsap.to(canvas, {
+    autoAlpha: 1,
+    duration,
+    ease: "power1.out",
+    onComplete: () => root.classList.add("scene-ready"),
+  });
 }
 
 function useFallback(): void {

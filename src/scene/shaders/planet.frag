@@ -1,7 +1,5 @@
 // Obsidiana pulida: cuerpo casi negro índigo, especular nítido, reflejo tenue del papel en el
 // borde y rim índigo en el lado opuesto a la luz. Los colores son sRGB directos (sin conversión).
-uniform sampler2D uMap;
-uniform mat3 normalMatrix;
 uniform vec3 uLightDir;
 uniform vec3 uRimDir;
 // Peso del reflejo del papel: 1 sobre la página clara, 0 dentro del panel oscuro.
@@ -16,17 +14,23 @@ const vec3 VEIN = vec3(0.110, 0.114, 0.300);   // índigo noche aclarado
 const vec3 ACCENT = vec3(0.357, 0.357, 0.941); // #5B5BF0
 const vec3 PAPER = vec3(0.910, 0.910, 0.980);  // #E8E8FA
 
+float veins(vec2 uv) {
+  float a = sin(uv.x * 48.0 + sin(uv.y * 19.0) * 3.2);
+  float b = sin((uv.x + uv.y) * 31.0 - sin(uv.x * 11.0) * 2.0);
+  return pow(max(0.0, 1.0 - abs(a * 0.72 + b * 0.28)), 10.0);
+}
+
 void main() {
-  vec4 tex = texture2D(uMap, vUv);
-  vec3 n = normalize(normalMatrix * (tex.xyz * 2.0 - 1.0));
   vec3 ns = normalize(vNormal);
+  float vein = veins(vUv);
+  vec3 n = normalize(ns + vec3(dFdx(vein), dFdy(vein), 0.0) * 0.035);
   vec3 v = normalize(-vViewPos);
   vec3 l = uLightDir;
 
   float facing = max(dot(ns, v), 0.0);
   float lit = max((dot(ns, l) + 0.3) / 1.3, 0.0);
 
-  vec3 color = mix(DEEP, VEIN, tex.a * 0.3) * (0.6 + 0.9 * lit);
+  vec3 color = mix(DEEP, VEIN, vein * 0.3) * (0.6 + 0.9 * lit);
 
   // El brillo nítido usa una normal casi lisa: la obsidiana refleja limpio y el relieve solo lo ondula.
   vec3 h = normalize(l + v);

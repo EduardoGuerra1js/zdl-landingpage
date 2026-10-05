@@ -28,7 +28,7 @@ src/
   main.ts
   styles/       tokens, base, secciones
   ui/           scroll (Lenis + ScrollTrigger); luego nav, reveals, microinteracciones
-  scene/        SceneManager, QualityManager, ScrollState, LayoutState, PointerState, choreography, finale, objects/ (Planet, NightSky, BlackHole…), post/ (LensPass), shaders/, textures/
+  scene/        SceneManager, QualityManager, ScrollState, LayoutState, PointerState, choreography, finale, objects/ (Planet, NightSky, BlackHole…), post/ (LensPass), shaders/
 scripts/        generador del fallback del planeta
 public/
   brand/        SVG de marca (logo, isotipo, logotipo), sin metadatos C2PA
@@ -41,4 +41,4 @@ zero-day-labs-prototype-reference.html   boceto de referencia (no es la fuente f
 
 ## Rendimiento (metas)
 
-Lighthouse móvil 90+, LCP < 2.5 s, CLS cercano a 0, JS inicial < 150 KB gzip sin contar Three.js diferido. El 3D se carga tras el primer pintado; el texto nunca espera a WebGL. Detalle en `project.mdc`.
+Lighthouse móvil 90+, LCP < 2.5 s, CLS cercano a 0, JS inicial < 150 KB gzip sin contar Three.js diferido. El 3D se pide en paralelo al arranque; el marcador CSS del hero no se pinta con JS. El texto nunca espera a WebGL. Detalle en `project.mdc`.

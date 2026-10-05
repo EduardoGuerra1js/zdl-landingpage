@@ -137,7 +137,7 @@ const NARROW: KeySpec[] = [
   { target: "finale", t: 0.5, rest: true, pose: away(4) },
 ];
 
-/** Coincide con el `72rem` de `.cards-grid--4` en `sections.css`. */
+/** Cuando las tarjetas de 15rem ya caben en 4 columnas (auto-fit de sections.css). */
 const WIDE_MIN_PX = 1152;
 /** Cabe el sistema completo (luna en 1.82 radios) en el lado menor del panel. */
 const ABOUT_FIT = 3.9;

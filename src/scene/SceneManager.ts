@@ -125,6 +125,7 @@ export class SceneManager {
     this.setSize(canvas.clientWidth, canvas.clientHeight);
 
     document.addEventListener("visibilitychange", this.handleVisibility);
+    window.addEventListener("scroll", this.handleScroll, { passive: true });
     canvas.addEventListener("webglcontextlost", this.handleContextLost);
     if (document.hidden) this.pauses.add("hidden");
   }
@@ -164,6 +165,7 @@ export class SceneManager {
     this.pause("hidden");
     this.resizeObserver.disconnect();
     document.removeEventListener("visibilitychange", this.handleVisibility);
+    window.removeEventListener("scroll", this.handleScroll);
     this.canvas.removeEventListener("webglcontextlost", this.handleContextLost);
     for (const object of this.objects) object.dispose();
     this.objects.length = 0;
@@ -181,7 +183,10 @@ export class SceneManager {
     if (ctx.reducedMotion) {
       const unchanged =
         ctx.scroll.version === this.renderedScrollVersion && ctx.layout.version === this.renderedLayoutVersion;
-      if (!this.needsRender && unchanged) return;
+      if (!this.needsRender && unchanged) {
+        this.pause("offscreen");
+        return;
+      }
       ctx.delta = 0;
     } else {
       ctx.delta = Math.min(rawDelta, MAX_DELTA);
@@ -200,6 +205,7 @@ export class SceneManager {
     this.needsRender = false;
     this.renderedScrollVersion = ctx.scroll.version;
     this.renderedLayoutVersion = ctx.layout.version;
+    if (!post?.active && !this.hasVisibleObjects()) this.pause("offscreen");
   };
 
   private setSize(width: number, height: number): void {
@@ -220,7 +226,10 @@ export class SceneManager {
 
   private handleResize = (entries: ResizeObserverEntry[]): void => {
     const box = entries[0]?.contentRect;
-    if (box) this.setSize(box.width, box.height);
+    if (box) {
+      this.setSize(box.width, box.height);
+      this.resume("offscreen");
+    }
   };
 
   private handleQualityChange = (params: Readonly<QualityParams>): void => {
@@ -235,6 +244,17 @@ export class SceneManager {
     if (document.hidden) this.pause("hidden");
     else this.resume("hidden");
   };
+
+  private handleScroll = (): void => {
+    this.resume("offscreen");
+  };
+
+  private hasVisibleObjects(): boolean {
+    for (const object of this.objects) {
+      if (object.root.visible) return true;
+    }
+    return false;
+  }
 
   /** La pérdida de contexto se trata como definitiva: la página pasa al fallback estático. */
   private handleContextLost = (): void => {

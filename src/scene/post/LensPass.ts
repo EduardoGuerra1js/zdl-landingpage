@@ -38,7 +38,8 @@ export function createLensState(): LensState {
   return { strength: 0, x: 0.5, y: 0.5, radius: 0.2 };
 }
 
-const MSAA_SAMPLES = 4;
+const TARGET_SCALE = 0.75;
+const MSAA_SAMPLES = 2;
 
 export class LensPass implements PostPass {
   private enabled = false;
@@ -84,8 +85,8 @@ export class LensPass implements PostPass {
 
   render(renderer: WebGLRenderer, scene: Scene, camera: Camera): void {
     renderer.getDrawingBufferSize(this.size);
-    const width = Math.max(1, this.size.x);
-    const height = Math.max(1, this.size.y);
+    const width = Math.max(1, Math.round(this.size.x * TARGET_SCALE));
+    const height = Math.max(1, Math.round(this.size.y * TARGET_SCALE));
 
     if (!this.target) {
       this.target = new WebGLRenderTarget(width, height, { samples: MSAA_SAMPLES });

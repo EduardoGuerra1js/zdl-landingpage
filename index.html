@@ -20,6 +20,12 @@
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="es_MX" />
     <script>document.documentElement.classList.add("js");</script>
+    <!-- El marcador CSS no se pinta si hay JS: evita el planeta “liso” antes del canvas. -->
+    <style>
+      .js:not(.no-webgl) .hero__visual .planet-ph > * {
+        visibility: hidden;
+      }
+    </style>
   </head>
   <body>
     <!-- Sprite: isotipo de marca (geometría intacta, color vía variables) e iconos de línea. -->
